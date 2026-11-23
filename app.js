@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 import {THEMES,ORDER,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.0.0', VERSION_DATE='2026-11-23';
+const VERSION='1.0.1', VERSION_DATE='2026-11-23';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -61,14 +61,17 @@ function startData(){
   stopData();
   const q=fb.query(fb.collection(db,'bricks'),fb.where('addedBy','==',user.uid));
   unsubs.push(fb.onSnapshot(q,{includeMetadataChanges:true},snap=>{
-    const list=[];let prof={};
-    snap.forEach(d=>{const x=d.data();if(d.id.startsWith('_profile'))prof=x;else if(!d.id.startsWith('_'))list.push({...x,id:d.id})});
-    sets=list;profile=prof;
+    const list=[];snap.forEach(d=>list.push({...d.data(),id:d.id}));
+    sets=list;
     if(!snap.metadata.fromCache)setLast();
-    if(profile.aspecto&&profile.aspecto!==aspecto)applyAspecto(profile.aspecto);
     renderAll();
   },err=>{if(err&&err.code==='permission-denied'){denied=true;showOnly('denied')}else toast('Error de sincronización')}));
-  unsubs.push(fb.onSnapshot(fb.doc(db,'bricks','_config'),s=>{cfg=s.exists()?s.data():{};keysState()},()=>{}));
+  unsubs.push(fb.onSnapshot(fb.doc(db,'bricksMeta',user.uid),s=>{
+    profile=s.exists()?s.data():{};
+    if(profile.aspecto&&profile.aspecto!==aspecto)applyAspecto(profile.aspecto);
+    if(curTab==='profile')syncProfile();
+  },()=>{}));
+  unsubs.push(fb.onSnapshot(fb.doc(db,'bricksMeta','config'),s=>{cfg=s.exists()?s.data():{};keysState()},()=>{}));
 }
 const setLast=()=>{LS.set('bricks-lastsync',String(Date.now()));lastTxt()};
 function lastTxt(){const t=Number(LS.get('bricks-lastsync','0'));$('s-last').textContent='Última sincronización: '+(t?new Date(t).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}):'nunca')}
@@ -317,7 +320,7 @@ function syncProfile(){
   $('p-delphoto').classList.toggle('hidden',!profile.cardImage);
 }
 let pT;async function saveProfile(patch){
-  try{await fb.setDoc(fb.doc(db,'bricks','_profile_'+user.uid),{addedBy:user.uid,...patch,updatedAt:fb.serverTimestamp()},{merge:true})}catch{toast('No se pudo guardar el perfil')}
+  try{await fb.setDoc(fb.doc(db,'bricksMeta',user.uid),{...patch,updatedAt:fb.serverTimestamp()},{merge:true})}catch{toast('No se pudo guardar el perfil')}
 }
 ['p-name','p-num'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(pT);pT=setTimeout(()=>saveProfile({name:$('p-name').value.trim(),insidersNumber:$('p-num').value.trim()}),600)}));
 $('aspectos').addEventListener('click',e=>{const b=e.target.closest('.asp');if(!b)return;applyAspecto(b.dataset.k);saveProfile({aspecto:b.dataset.k})});
@@ -339,8 +342,8 @@ function settingsInit(){
 function keysState(){const k=keys();$('k-state').textContent=`Brickset: ${k.bs?'guardada':'sin clave'} · Rebrickable: ${k.rb?'guardada':'sin clave'}`}
 $('btn-keys').addEventListener('click',async()=>{
   const bs=$('k-bs').value.trim(),rb=$('k-rb').value.trim();if(!bs&&!rb){toast('Pega una clave primero');return}
-  const patch={addedBy:user.uid,updatedAt:fb.serverTimestamp()};if(bs){patch.bricksetKey=bs;LS.set('bricks-k-bs',bs)}if(rb){patch.rebrickableKey=rb;LS.set('bricks-k-rb',rb)}
-  try{await fb.setDoc(fb.doc(db,'bricks','_config'),patch,{merge:true});toast('Claves guardadas')}catch{toast('Guardadas solo en este móvil. La clave compartida solo se cambia desde la cuenta principal.')}
+  const patch={updatedAt:fb.serverTimestamp()};if(bs){patch.bricksetKey=bs;LS.set('bricks-k-bs',bs)}if(rb){patch.rebrickableKey=rb;LS.set('bricks-k-rb',rb)}
+  try{await fb.setDoc(fb.doc(db,'bricksMeta','config'),patch,{merge:true});toast('Claves guardadas')}catch{toast('Guardadas solo en este móvil. La clave compartida solo se cambia desde la cuenta principal.')}
   $('k-bs').value='';$('k-rb').value='';keysState();
 });
 $('btn-sync').addEventListener('click',async()=>{
