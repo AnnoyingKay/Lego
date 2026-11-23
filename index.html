@@ -67,6 +67,7 @@
         <button data-v="listimg" aria-label="Lista con imágenes">▤</button>
         <button data-v="grid-s" aria-label="Cuadrícula pequeña">▦</button>
         <button data-v="grid-l" aria-label="Cuadrícula grande">▣</button>
+        <button data-v="shelf" aria-label="Estantería">▥</button>
       </div>
     </div>
     <div id="lib-body"></div>
@@ -153,6 +154,10 @@
   <label class="f" for="f-img">Dirección de la imagen</label>
   <input type="text" id="f-img" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://…">
 
+  <label class="f">Foto de tu set</label>
+  <div class="preview"><div class="ph" id="f-myph"></div>
+    <div class="row" style="flex:1"><button type="button" class="btn sec small" id="ph-take">Hacer foto</button><button type="button" class="btn sec small" id="ph-pick">Galería</button><button type="button" class="btn ghost small hidden" id="ph-del">Quitar</button></div></div>
+  <input type="file" id="ph-cam" accept="image/*" capture="environment" class="hidden"><input type="file" id="ph-gal" accept="image/*" class="hidden">
   <div class="grid2">
     <div><label class="f" for="f-num">Número de set</label><input type="text" id="f-num" inputmode="text" autocomplete="off"></div>
     <div><label class="f" for="f-year">Año</label><input type="text" id="f-year" inputmode="numeric" autocomplete="off"></div>
@@ -174,8 +179,8 @@
     <div><label class="f" for="f-store">Tienda de compra</label><select id="f-store"></select><input type="text" id="f-store-other" class="hidden" placeholder="Escribe la tienda" autocomplete="off" style="margin-top:6px"></div>
     <div><label class="f" for="f-date">Fecha de compra</label><input type="date" id="f-date"></div>
   </div>
-  <label class="f" for="f-where">Dónde está</label>
-  <input type="text" id="f-where" autocomplete="off" placeholder="Estantería, caja, trastero…">
+  <label class="f" for="f-where">Dónde está expuesto o guardado</label>
+  <select id="f-where"></select><input type="text" id="f-where-other" class="hidden" placeholder="Escribe el lugar" autocomplete="off" style="margin-top:6px">
 
   <label class="f">Estado</label>
   <div class="seg" id="f-status">

@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
-import {THEMES,ORDER,FABS,artSvg,patternUri} from './themes.js';
+import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.0.3', VERSION_DATE='2026-11-23';
+const VERSION='1.1.0', VERSION_DATE='2026-11-23';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -26,6 +26,7 @@ function applyAspecto(k){
   document.body.style.backgroundImage=patternUri(k);
   $('themecolor').setAttribute('content',t.hd);
   $('hero-art').innerHTML=artSvg(k,'Cabecera '+t.label);$('hero-title').textContent=t.title;$('hero-tag').textContent=t.tag;
+  const sh=SHELF[k];r.setProperty('--wall',sh.wall);r.setProperty('--plank-a',sh.a);r.setProperty('--plank-b',sh.b);r.setProperty('--plank-img',sh.img);
   $('fab').innerHTML=FABS[k];$('login-title').textContent=t.title;document.title=t.title;
   document.querySelectorAll('.asp').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
   LS.set('bricks-aspecto',k);
@@ -94,7 +95,7 @@ function renderAll(){
   $('offline').classList.toggle('hidden',navigator.onLine!==false);
   if(curTab==='home')renderHome();
   if(curTab==='lib')renderLib();
-  filterOptions();storeList();
+  filterOptions();choiceList();
 }
 window.addEventListener('online',renderAll);window.addEventListener('offline',renderAll);
 
@@ -122,7 +123,18 @@ function renderHome(){
   $('home-recent').classList.toggle('hidden',!rec.length);
   $('recent').innerHTML=rec.map(s=>`<button class="th it" style="padding:0;border:0;background:none;display:block" data-id="${s.id}">${phHTML(s)}</button>`).join('');
 }
-const phHTML=s=>`<div class="ph sq">${s.imageUrl?`<img src="${esc(s.imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide="1">`:''}</div>`;
+const phHTML=(s,photoFirst)=>{const src=photoFirst?(s.photo||s.imageUrl):(s.imageUrl||s.photo),own=!!src&&src===s.photo;
+  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}</div>`};
+function renderShelf(a){
+  const body=$('lib-body'),b=a.filter(s=>s.status==='owned'&&s.built);
+  if(!b.length){body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>Aún no hay sets montados. Marca un set como Montado y aparecerá aquí.</div></div>`;return}
+  const g=new Map();b.forEach(s=>{const k=s.location||'';if(!g.has(k))g.set(k,[]);g.get(k).push(s)});
+  const keys=[...g.keys()].sort((x,y)=>!x?1:!y?-1:x.localeCompare(y,'es'));
+  body.innerHTML=`<div class="note" style="padding:10px 14px 0">${b.length} montado${b.length===1?'':'s'} en la estantería</div>`+keys.map(k=>{
+    const items=g.get(k);let rows='';
+    for(let i=0;i<items.length;i+=3)rows+=`<div class="srow">${items.slice(i,i+3).map(s=>`<button class="si" data-id="${s.id}">${phHTML(s,true)}<b>${esc(s.name||s.setNumber)}</b></button>`).join('')}</div><div class="plank"></div>`;
+    return `<div class="shelfgrp"><h3><span>${esc(k||'Sin ubicación')}</span><span class="chip">${items.length}</span></h3>${rows}</div>`}).join('');
+}
 
 /* ---------- biblioteca ---------- */
 function filtered(){
@@ -149,6 +161,7 @@ function renderLib(){
   document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v===prefs.view));
   $('lib-sort').value=prefs.sort;$('lib-dir').textContent=prefs.dir===1?'↑':'↓';
   const a=filtered(),v=prefs.view,body=$('lib-body');
+  if(v==='shelf'){renderShelf(a);return}
   if(!a.length){
     body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>${sets.length?'Ningún set con estos filtros.':'Aún no hay sets. Añade el primero.'}</div></div>`;return}
   if(v==='grid-s'||v==='grid-l')
@@ -171,22 +184,26 @@ function filterOptions(){
   $('x-theme').innerHTML=opt(th);$('x-year').innerHTML=opt(yr);$('x-store').innerHTML=opt(st);fillFilters();
   $('dl-theme').innerHTML=th.map(x=>`<option value="${esc(x)}">`).join('');
 }
-let sKey=null;
-const DEF_STORES=['LEGO Store','Amazon','El Corte Inglés','Carrefour','Juguettos','Smyths','Wallapop'];
-function storeList(){
-  const custom=[...new Set(sets.map(s=>s.store).filter(x=>x&&!DEF_STORES.includes(x)))].sort((a,b)=>a.localeCompare(b,'es'));
-  const k=custom.join('|');if(k===sKey)return;sKey=k;
-  const sel=$('f-store'),cur=sel.value;
-  sel.innerHTML='<option value="">Elige tienda</option>'+[...DEF_STORES,...custom].map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__other">Otros…</option>';
-  sel.value=[...sel.options].some(o=>o.value===cur)?cur:'';
+const CH={
+  store:{sel:'f-store',oth:'f-store-other',defs:['LEGO Store','Amazon','El Corte Inglés','Carrefour','Juguettos','Smyths','Wallapop'],field:'store',lab:'Elige tienda',sk:null},
+  where:{sel:'f-where',oth:'f-where-other',defs:['Salón','Dormitorio','Despacho','Trastero'],field:'location',lab:'Elige lugar',sk:null}
+};
+function choiceList(){
+  for(const c of Object.values(CH)){
+    const custom=[...new Set(sets.map(s=>s[c.field]).filter(x=>x&&!c.defs.includes(x)))].sort((a,b)=>a.localeCompare(b,'es'));
+    const k=custom.join('|');if(k===c.sk)continue;c.sk=k;
+    const sel=$(c.sel),cur=sel.value;
+    sel.innerHTML=`<option value="">${c.lab}</option>`+[...c.defs,...custom].map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__other">Otros…</option>';
+    sel.value=[...sel.options].some(o=>o.value===cur)?cur:'';
+  }
 }
-const storeVal=()=>$('f-store').value==='__other'?$('f-store-other').value.trim():$('f-store').value;
-function setStore(v){
-  const sel=$('f-store');$('f-store-other').value='';
-  if(!v)sel.value='';else if([...sel.options].some(o=>o.value===v))sel.value=v;else{sel.value='__other';$('f-store-other').value=v}
-  $('f-store-other').classList.toggle('hidden',sel.value!=='__other');
+const choiceVal=c=>$(c.sel).value==='__other'?$(c.oth).value.trim():$(c.sel).value;
+function setChoice(c,v){
+  const sel=$(c.sel);$(c.oth).value='';
+  if(!v)sel.value='';else if([...sel.options].some(o=>o.value===v))sel.value=v;else{sel.value='__other';$(c.oth).value=v}
+  $(c.oth).classList.toggle('hidden',sel.value!=='__other');
 }
-$('f-store').addEventListener('change',()=>{const o=$('f-store').value==='__other';$('f-store-other').classList.toggle('hidden',!o);if(o)$('f-store-other').focus()});
+Object.values(CH).forEach(c=>$(c.sel).addEventListener('change',()=>{const o=$(c.sel).value==='__other';$(c.oth).classList.toggle('hidden',!o);if(o)$(c.oth).focus()}));
 function fillFilters(){const f=prefs.f;$('x-status').value=f.status||'';$('x-theme').value=f.theme||'';$('x-year').value=f.year||'';$('x-store').value=f.store||'';$('x-built').value=f.built||'';$('x-gift').checked=!!f.gift;$('x-resale').checked=!!f.resale}
 $('btn-filters').addEventListener('click',()=>{fillFilters();$('filters').classList.remove('hidden')});
 $('x-ok').addEventListener('click',()=>{prefs.f={status:$('x-status').value,theme:$('x-theme').value,year:$('x-year').value,store:$('x-store').value,built:$('x-built').value,gift:$('x-gift').checked,resale:$('x-resale').checked};savePrefs();$('filters').classList.add('hidden');renderLib()});
@@ -194,7 +211,7 @@ $('x-clear').addEventListener('click',()=>{prefs.f={};savePrefs();fillFilters();
 
 /* ---------- formulario de set (se construye una vez, nunca se rehace con la sincronización) ---------- */
 let editing=null,pickResults=[];
-const F=['q','num','year','name','theme','pieces','mini','rrp','paid','date','where','img','sale','sdate','notes'];
+const F=['q','num','year','name','theme','pieces','mini','rrp','paid','date','img','sale','sdate','notes'];
 function setStatusUI(s){
   document.querySelectorAll('#f-status button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
   $('c-built').classList.toggle('hidden',s!=='owned');$('f-soldbox').classList.toggle('hidden',s!=='sold');calc();
@@ -209,13 +226,18 @@ function calc(){
 ['f-rrp','f-paid','f-sale'].forEach(i=>$(i).addEventListener('input',calc));
 function preview(){const u=$('f-img').value.trim();$('f-ph').innerHTML=/^https?:\/\//i.test(u)?`<img src="${esc(u)}" alt="" referrerpolicy="no-referrer" data-hide="1">`:''}
 $('f-img').addEventListener('input',preview);
+let pendingPhoto='';
+function photoUI(){$('f-myph').innerHTML=pendingPhoto?`<img src="${pendingPhoto}" alt="" class="cover">`:'';$('ph-del').classList.toggle('hidden',!pendingPhoto)}
+function shrink(file,max,q){return new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',q))};im.onerror=rej;im.src=rd.result};rd.onerror=rej;rd.readAsDataURL(file)})}
+['ph-cam','ph-gal'].forEach(id=>$(id).addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{pendingPhoto=await shrink(f,640,.65);photoUI()}catch{$('f-err').textContent='No se pudo leer la foto.'}}));
+$('ph-take').addEventListener('click',()=>$('ph-cam').click());$('ph-pick').addEventListener('click',()=>$('ph-gal').click());$('ph-del').addEventListener('click',()=>{pendingPhoto='';photoUI()});
 function openSheet(s){
   editing=s?s.id:null;pickResults=[];$('f-res').innerHTML='';$('f-msg').textContent='';$('f-err').textContent='';
-  F.forEach(k=>$('f-'+k).value='');setStore(s?s.store:'');
+  F.forEach(k=>$('f-'+k).value='');setChoice(CH.store,s?s.store:'');setChoice(CH.where,s?s.location:'');pendingPhoto=s?(s.photo||''):'';photoUI();
   $('sh-title').textContent=s?'Editar set':'Añadir set';$('f-del').classList.toggle('hidden',!s);$('f-del').textContent='Borrar';
   $('f-built').checked=false;$('f-gift').checked=false;$('f-resale').checked=false;
   if(s){
-    const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,where:s.location,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
+    const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
     Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid'||k==='sale')?String(v).replace('.',','):String(v)});
     $('f-built').checked=!!s.built;$('f-gift').checked=!!s.gift;$('f-resale').checked=!!s.resale;setStatusUI(s.status||'owned');
   }else setStatusUI('owned');
@@ -229,7 +251,7 @@ $('f-ok').addEventListener('click',async()=>{
   for(const k of ['year','pieces','mini','rrp','paid','sale']){if(g(k)&&n(k)==null){$('f-err').textContent='Revisa los números.';return}}
   const st=curStatus();
   const data={addedBy:user.uid,setNumber:g('num'),name:g('name'),theme:g('theme'),year:n('year'),pieces:n('pieces'),minifigs:n('mini'),rrp:n('rrp'),paid:n('paid'),
-    store:storeVal(),purchaseDate:g('date'),location:g('where'),notes:g('notes'),imageUrl:g('img'),status:st,built:st==='owned'&&$('f-built').checked,
+    store:choiceVal(CH.store),purchaseDate:g('date'),location:choiceVal(CH.where),photo:pendingPhoto,notes:g('notes'),imageUrl:g('img'),status:st,built:st==='owned'&&$('f-built').checked,
     gift:$('f-gift').checked,resale:$('f-resale').checked,salePrice:st==='sold'?n('sale'):null,saleDate:st==='sold'?g('sdate'):'',updatedAt:fb.serverTimestamp()};
   try{
     if(editing)await fb.setDoc(fb.doc(db,'bricks',editing),data,{merge:true});
@@ -337,10 +359,7 @@ let pT;async function saveProfile(patch){
 }
 ['p-name','p-num'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(pT);pT=setTimeout(()=>saveProfile({name:$('p-name').value.trim(),insidersNumber:$('p-num').value.trim()}),600)}));
 $('aspectos').addEventListener('click',e=>{const b=e.target.closest('.asp');if(!b)return;applyAspecto(b.dataset.k);saveProfile({aspecto:b.dataset.k})});
-$('p-photo').addEventListener('change',e=>{
-  const f=e.target.files[0];if(!f)return;const rd=new FileReader();
-  rd.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,900/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);saveProfile({cardImage:c.toDataURL('image/jpeg',.72)});toast('Foto guardada')};im.src=rd.result};rd.readAsDataURL(f);e.target.value='';
-});
+$('p-photo').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{saveProfile({cardImage:await shrink(f,900,.72)});toast('Foto guardada')}catch{toast('No se pudo leer la foto')}});
 $('p-delphoto').addEventListener('click',()=>saveProfile({cardImage:''}));
 $('p-showcard').addEventListener('click',()=>{
   $('cf-name').textContent=$('p-name').value||'';$('cf-num').textContent=$('p-num').value||'';

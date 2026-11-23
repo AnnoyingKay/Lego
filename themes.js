@@ -39,3 +39,14 @@ lotr:fs('<circle cx="32" cy="32" r="24" fill="#4F6B2F" stroke="#B8923A" stroke-w
 dis:fs('<path d="M32 1 C34 20 44 30 63 32 C44 34 34 44 32 63 C30 44 20 34 1 32 C20 30 30 20 32 1Z" fill="#3C6DDB"/><circle cx="52" cy="12" r="4" fill="#F2A6C8"/><circle cx="12" cy="52" r="3" fill="#F2A6C8"/>'+plus(32,32,9)),
 sh:fs(`<polygon points="${burst(11,31,21)}" fill="#D62828" stroke="#1D4E9E" stroke-width="3" stroke-linejoin="round"/>`+plus())
 };
+
+export const SHELF={
+lego:{wall:'#FFF3C4',a:'#D9A25F',b:'#A8742F',img:'none'},
+tren:{wall:'#E8F0F4',a:'#8A9AA3',b:'#5F6E77',img:'repeating-linear-gradient(90deg,transparent 0 12px,rgba(60,40,20,.35) 12px 16px)'},
+esp:{wall:'#E6E8FF',a:'#7B7FEA',b:'#4B4FD6',img:'none'},
+mod:{wall:'#F4E6D3',a:'#C98B6B',b:'#9A5A3C',img:'repeating-linear-gradient(90deg,transparent 0 18px,rgba(0,0,0,.18) 18px 20px)'},
+hp:{wall:'#EADFC4',a:'#8C5A3A',b:'#5A3522',img:'none'},
+lotr:{wall:'#E3EDCF',a:'#8FAE62',b:'#5D7A38',img:'none'},
+dis:{wall:'#E4EEFF',a:'#F2A6C8',b:'#D9779F',img:'none'},
+sh:{wall:'#FFE9DC',a:'#4F7FC8',b:'#1D4E9E',img:'none'}
+};

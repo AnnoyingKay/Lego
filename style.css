@@ -115,3 +115,14 @@ details.adv .box{background:#fff;border:1px solid var(--line);border-top:0;borde
 #fab:active{transform:scale(.93)}
 #fab svg{display:block}
 #app{padding-bottom:150px}
+
+.views button{width:36px}
+.ph img.cover{object-fit:cover}
+.shelfgrp{margin:10px 14px 0;background:var(--wall,#fff);border:1px solid var(--line);border-radius:14px;padding:10px 10px 12px}
+.shelfgrp h3{font-size:14px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.srow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;align-items:end}
+.si{background:none;border:0;padding:0;text-align:center;min-width:0}
+.si .ph{aspect-ratio:1/1;width:100%;background:transparent}
+.si b{display:block;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.plank{height:10px;margin:2px -6px 12px;background-color:var(--plank-a,#d9a25f);background-image:var(--plank-img,none);border-bottom:6px solid var(--plank-b,#a8742f);border-radius:3px}
+.plank:last-child{margin-bottom:0}
