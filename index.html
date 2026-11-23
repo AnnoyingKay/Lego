@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="only light">
+<meta name="theme-color" content="#FFD500" id="themecolor">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bricks">
+<title>Bricks</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="boot" class="center"><p>Cargando…</p></div>
+
+<div id="nocfg" class="center hidden">
+  <h1>Falta la configuración</h1>
+  <p>Abre firebase-config.js y pega la configuración de Firebase de la app Christmas.</p>
+</div>
+
+<div id="login" class="center hidden">
+  <h1 id="login-title">Bricks</h1>
+  <p>Tu colección de sets, privada.</p>
+  <button class="btn" id="btn-login">Entrar con Google</button>
+  <p class="err" id="login-err"></p>
+</div>
+
+<div id="denied" class="center hidden">
+  <h1>Cuenta no autorizada</h1>
+  <p>Esta cuenta (<span id="denied-mail"></span>) no tiene acceso a Bricks.</p>
+  <button class="btn sec" id="btn-denied-out">Cerrar sesión</button>
+</div>
+
+<div id="app" class="hidden">
+
+  <section id="v-home">
+    <div class="hero">
+      <div id="hero-art"></div>
+      <div class="ttl"><h1 id="hero-title">Bricks</h1><p id="hero-tag"></p></div>
+    </div>
+    <div class="pad">
+      <div id="offline" class="chip warn hidden">Copia sin conexión</div>
+      <div class="tiles" id="tiles"></div>
+      <div class="card" id="home-money"></div>
+      <div class="card hidden" id="home-recent"><h3>Últimos añadidos</h3><div class="strip" id="recent"></div></div>
+    </div>
+  </section>
+
+  <section id="v-lib" class="hidden">
+    <div class="bar"><h2 id="lib-title">Biblioteca</h2></div>
+    <div class="tot" id="lib-tot"></div>
+    <div class="tools">
+      <input type="text" id="lib-q" placeholder="Buscar nombre o número" autocomplete="off">
+      <button class="btn sec small" id="btn-filters">Filtros</button>
+    </div>
+    <div class="tools">
+      <select id="lib-sort" aria-label="Ordenar por">
+        <option value="name">Nombre</option><option value="num">Número de set</option><option value="year">Año</option><option value="pieces">Piezas</option><option value="paid">Precio pagado</option>
+      </select>
+      <button class="btn sec small" id="lib-dir" aria-label="Cambiar orden">A→Z</button>
+      <div class="views" id="views">
+        <button data-v="list" aria-label="Lista sin imágenes">≡</button>
+        <button data-v="listimg" aria-label="Lista con imágenes">▤</button>
+        <button data-v="grid-s" aria-label="Cuadrícula pequeña">▦</button>
+        <button data-v="grid-l" aria-label="Cuadrícula grande">▣</button>
+      </div>
+    </div>
+    <div id="lib-body"></div>
+  </section>
+
+  <section id="v-profile" class="hidden">
+    <div class="bar"><h2>Perfil</h2></div>
+    <div class="pad">
+      <div class="card">
+        <h3>Tú</h3>
+        <label class="f" for="p-name">Nombre</label>
+        <input type="text" id="p-name" autocomplete="off">
+        <label class="f" for="p-num">Número de socio LEGO Insiders</label>
+        <input type="text" id="p-num" inputmode="numeric" autocomplete="off">
+        <label class="f">Foto de la tarjeta</label>
+        <div class="row">
+          <label class="btn sec small" style="display:flex;align-items:center;justify-content:center">Elegir foto<input type="file" id="p-photo" accept="image/*" class="hidden"></label>
+          <button class="btn sec small" id="p-showcard">Mostrar en caja</button>
+          <button class="btn ghost small hidden" id="p-delphoto">Quitar foto</button>
+        </div>
+        <div class="note">Los puntos no se sincronizan con LEGO. La tarjeta solo se guarda aquí.</div>
+      </div>
+      <div class="card">
+        <h3>Aspecto</h3>
+        <div class="aspectos" id="aspectos"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-settings" class="hidden">
+    <div class="bar"><h2>Ajustes</h2></div>
+    <div class="pad">
+      <div class="card"><div class="kv"><span>Versión de la app</span><b id="s-version"></b></div></div>
+      <div class="card">
+        <h3>Sincronización</h3>
+        <div class="row">
+          <button class="btn" id="btn-sync">Sincronizar ahora</button>
+          <button class="btn sec" id="btn-export">Exportar copia</button>
+        </div>
+        <div class="note" id="s-last">Última sincronización: nunca</div>
+      </div>
+      <div class="card">
+        <h3>Cuenta</h3>
+        <div class="kv"><span>Sesión</span><b id="s-mail" style="overflow-wrap:anywhere;text-align:right"></b></div>
+        <div class="row" style="margin-top:8px"><button class="btn sec" id="btn-out">Cerrar sesión</button></div>
+      </div>
+      <details class="adv">
+        <summary>Avanzado</summary>
+        <div class="box">
+          <label class="f" for="k-bs">Clave de Brickset</label>
+          <input type="text" id="k-bs" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Pega la clave">
+          <label class="f" for="k-rb">Clave de Rebrickable (opcional)</label>
+          <input type="text" id="k-rb" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Pega la clave">
+          <div class="row" style="margin-top:10px"><button class="btn" id="btn-keys">Guardar claves</button></div>
+          <div class="note" id="k-state"></div>
+          <div class="note">Las claves se comparten con las cuentas autorizadas. Datos de sets: Brickset y Rebrickable.</div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <nav><div class="in" id="nav">
+    <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg>Inicio</button>
+    <button data-tab="lib"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>Biblioteca</button>
+    <button data-tab="add" class="add" aria-label="Añadir set"><span class="pl"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></button>
+    <button data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Perfil</button>
+    <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
+  </div></nav>
+</div>
+
+<div id="sheet" class="ovl hidden"><div class="panel">
+  <h2 id="sh-title">Añadir set</h2>
+  <label class="f" for="f-q">Número, nombre o código de barras</label>
+  <div class="row" style="flex-wrap:nowrap">
+    <input type="text" id="f-q" inputmode="search" autocomplete="off" placeholder="75192, Halcón o código EAN" style="flex:1 1 auto">
+    <button class="btn small" id="f-search" style="flex:0 0 auto;min-width:84px">Buscar</button>
+  </div>
+  <div class="row" style="margin-top:8px"><button class="btn sec small" id="f-scan">Escanear código</button></div>
+  <div class="note" id="f-msg"></div>
+  <div class="res" id="f-res"></div>
+
+  <div class="preview"><div class="ph" id="f-ph"></div><div class="note" style="flex:1">La imagen se guarda solo como dirección web.</div></div>
+  <label class="f" for="f-img">Dirección de la imagen</label>
+  <input type="text" id="f-img" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://…">
+
+  <div class="grid2">
+    <div><label class="f" for="f-num">Número de set</label><input type="text" id="f-num" inputmode="text" autocomplete="off"></div>
+    <div><label class="f" for="f-year">Año</label><input type="text" id="f-year" inputmode="numeric" autocomplete="off"></div>
+  </div>
+  <label class="f" for="f-name">Nombre</label>
+  <input type="text" id="f-name" autocomplete="off">
+  <label class="f" for="f-theme">Tema</label>
+  <input type="text" id="f-theme" list="dl-theme" autocomplete="off"><datalist id="dl-theme"></datalist>
+  <div class="grid2">
+    <div><label class="f" for="f-pieces">Piezas</label><input type="text" id="f-pieces" inputmode="numeric" autocomplete="off"></div>
+    <div><label class="f" for="f-mini">Minifiguras</label><input type="text" id="f-mini" inputmode="numeric" autocomplete="off"></div>
+  </div>
+  <div class="grid2">
+    <div><label class="f" for="f-rrp">PVP (€)</label><input type="text" id="f-rrp" inputmode="decimal" autocomplete="off"></div>
+    <div><label class="f" for="f-paid">Precio pagado (€)</label><input type="text" id="f-paid" inputmode="decimal" autocomplete="off"></div>
+  </div>
+  <div class="note" id="f-save"></div>
+  <div class="grid2">
+    <div><label class="f" for="f-store">Tienda de compra</label><input type="text" id="f-store" list="dl-store" autocomplete="off"><datalist id="dl-store"></datalist></div>
+    <div><label class="f" for="f-date">Fecha de compra</label><input type="date" id="f-date"></div>
+  </div>
+  <label class="f" for="f-where">Dónde está</label>
+  <input type="text" id="f-where" autocomplete="off" placeholder="Estantería, caja, trastero…">
+
+  <label class="f">Estado</label>
+  <div class="seg" id="f-status">
+    <button type="button" data-s="wishlist">Deseado</button><button type="button" data-s="owned">Poseído</button><button type="button" data-s="sold">Vendido</button>
+  </div>
+  <label class="chk" id="c-built"><input type="checkbox" id="f-built">Montado</label>
+  <label class="chk"><input type="checkbox" id="f-gift">Para regalar</label>
+  <label class="chk"><input type="checkbox" id="f-resale">Scalper</label>
+  <div id="f-soldbox" class="hidden">
+    <div class="grid2">
+      <div><label class="f" for="f-sale">Precio de venta (€)</label><input type="text" id="f-sale" inputmode="decimal" autocomplete="off"></div>
+      <div><label class="f" for="f-sdate">Fecha de venta</label><input type="date" id="f-sdate"></div>
+    </div>
+    <div class="note" id="f-profit"></div>
+  </div>
+
+  <label class="f" for="f-notes">Notas</label>
+  <textarea id="f-notes"></textarea>
+  <div class="err" id="f-err"></div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn" id="f-ok">Guardar</button>
+    <button class="btn sec" id="f-cancel">Cancelar</button>
+    <button class="btn danger hidden" id="f-del">Borrar</button>
+  </div>
+</div></div>
+
+<div id="filters" class="ovl hidden"><div class="panel">
+  <h2>Filtros</h2>
+  <label class="f" for="x-status">Estado</label>
+  <select id="x-status"><option value="">Todos</option><option value="wishlist">Deseado</option><option value="owned">Poseído</option><option value="sold">Vendido</option></select>
+  <label class="f" for="x-theme">Tema</label><select id="x-theme"></select>
+  <label class="f" for="x-year">Año</label><select id="x-year"></select>
+  <label class="f" for="x-store">Tienda</label><select id="x-store"></select>
+  <label class="f" for="x-built">Montado</label>
+  <select id="x-built"><option value="">Todos</option><option value="1">Montados</option><option value="0">Por montar</option></select>
+  <label class="chk"><input type="checkbox" id="x-gift">Solo para regalar</label>
+  <label class="chk"><input type="checkbox" id="x-resale">Solo scalper</label>
+  <div class="row" style="margin-top:12px"><button class="btn" id="x-ok">Aplicar</button><button class="btn sec" id="x-clear">Quitar filtros</button></div>
+</div></div>
+
+<div id="scanbox" class="ovl hidden"><div class="panel">
+  <h2>Escanear código</h2>
+  <video id="scan-video" playsinline muted></video>
+  <div class="note" id="scan-msg">Apunta al código de barras de la caja.</div>
+  <div class="row" style="margin-top:10px"><button class="btn sec" id="scan-close">Cerrar</button></div>
+</div></div>
+
+<div id="cardfull" class="cardfull hidden">
+  <div id="cf-name"></div><div class="big" id="cf-num"></div><img id="cf-img" alt="" class="hidden" data-hide="1">
+  <button class="btn sec" id="cf-close">Cerrar</button>
+</div>
+
+<div id="toast" class="hidden" role="status"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
