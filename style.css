@@ -107,3 +107,11 @@ details.adv .box{background:#fff;border:1px solid var(--line);border-top:0;borde
 .cardfull img{max-width:100%;max-height:50vh;border-radius:12px}
 #scanbox video{width:100%;border-radius:12px;background:#000;max-height:50vh}
 #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#333;color:#fff;padding:9px 14px;border-radius:99px;font-size:13px;z-index:30;max-width:90%;text-align:center}
+
+.head{position:sticky;top:-14px;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg);margin:-14px -14px 6px;padding:12px 14px}
+.head h2{margin:0}
+.x{flex:0 0 auto;width:42px;height:42px;border:1px solid var(--line);background:#fff;border-radius:99px;font-size:26px;line-height:1;padding:0 0 3px;color:var(--ink)}
+#fab{position:fixed;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));width:64px;height:64px;padding:0;border:0;background:none;z-index:6;filter:drop-shadow(0 3px 4px rgba(0,0,0,.28));transition:transform .12s}
+#fab:active{transform:scale(.93)}
+#fab svg{display:block}
+#app{padding-bottom:150px}

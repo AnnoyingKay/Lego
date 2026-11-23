@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.0.1
+Version: 1.0.3
 Date: 23 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.0.1", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.0.3", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -31,5 +31,7 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.0.3 (2026-11-23): name searches no longer show LEGO branded video games or other items with no pieces (Gear). Searching by set number is unchanged.
+1.0.2 (2026-11-23): store dropdown with Otros and a typing box; X at the top right of the add and filter sheets; add button moved to the bottom right with a different shape per look.
 1.0.1 (2026-11-23): profile and shared keys moved to their own collection "bricksMeta", so "bricks" holds only sets.
 1.0.0 (2026-11-23): first release. Add by number, name or barcode; four library views; filters and sorting; cover with totals; profile with LEGO Insiders card; eight looks; settings with sync, export and shared API keys.

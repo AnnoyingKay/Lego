@@ -25,3 +25,17 @@ else if(kind==='stars')s=`<svg xmlns="http://www.w3.org/2000/svg" width="64" hei
 else if(kind==='lines')s=`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect y="19" width="40" height="2" fill="${c}" opacity=".3"/></svg>`;
 else return '';
 return `url("data:image/svg+xml,${encodeURIComponent(s)}")`}
+
+const plus=(x=32,y=32,s=11)=>`<path d="M${x} ${y-s}v${2*s}M${x-s} ${y}h${2*s}" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none"/>`;
+const burst=(n,ro,ri,cx=32,cy=32)=>{const p=[];for(let i=0;i<n*2;i++){const r=i%2?ri:ro,a=Math.PI*i/n-Math.PI/2;p.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1))}return p.join(' ')};
+const fs=b=>`<svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">${b}</svg>`;
+export const FABS={
+lego:fs('<rect x="6" y="22" width="52" height="34" rx="6" fill="#D01012"/><circle cx="20" cy="17" r="8" fill="#E5393A"/><circle cx="44" cy="17" r="8" fill="#E5393A"/>'+plus(32,40)),
+tren:fs('<rect x="38" y="4" width="12" height="12" fill="#8E3B1F"/><rect x="6" y="14" width="52" height="34" rx="6" fill="#B5502C"/><circle cx="19" cy="53" r="7" fill="#6B2D14"/><circle cx="45" cy="53" r="7" fill="#6B2D14"/>'+plus(32,31)),
+esp:fs('<circle cx="32" cy="32" r="26" fill="#4B4FD6"/><ellipse cx="32" cy="32" rx="31" ry="9" transform="rotate(-22 32 32)" fill="none" stroke="#D9DDFB" stroke-width="3"/>'+plus()),
+mod:fs('<path d="M4 30 L32 4 L60 30 V58 H4 Z" fill="#A8472A"/><rect x="44" y="8" width="8" height="14" fill="#5E2312"/>'+plus(32,40)),
+hp:fs(`<polygon points="${burst(8,31,19)}" fill="#7A2E3A" stroke="#C9A24B" stroke-width="3" stroke-linejoin="round"/>`+plus()),
+lotr:fs('<circle cx="32" cy="32" r="24" fill="#4F6B2F" stroke="#B8923A" stroke-width="7"/>'+plus(32,32,10)),
+dis:fs('<path d="M32 1 C34 20 44 30 63 32 C44 34 34 44 32 63 C30 44 20 34 1 32 C20 30 30 20 32 1Z" fill="#3C6DDB"/><circle cx="52" cy="12" r="4" fill="#F2A6C8"/><circle cx="12" cy="52" r="3" fill="#F2A6C8"/>'+plus(32,32,9)),
+sh:fs(`<polygon points="${burst(11,31,21)}" fill="#D62828" stroke="#1D4E9E" stroke-width="3" stroke-linejoin="round"/>`+plus())
+};

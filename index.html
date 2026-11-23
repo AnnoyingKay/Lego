@@ -131,14 +131,15 @@
   <nav><div class="in" id="nav">
     <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg>Inicio</button>
     <button data-tab="lib"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>Biblioteca</button>
-    <button data-tab="add" class="add" aria-label="Añadir set"><span class="pl"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span></button>
     <button data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Perfil</button>
     <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
   </div></nav>
 </div>
 
+<button id="fab" class="hidden" aria-label="Añadir set"></button>
+
 <div id="sheet" class="ovl hidden"><div class="panel">
-  <h2 id="sh-title">Añadir set</h2>
+  <div class="head"><h2 id="sh-title">Añadir set</h2><button class="x" id="sh-x" aria-label="Cerrar">×</button></div>
   <label class="f" for="f-q">Número, nombre o código de barras</label>
   <div class="row" style="flex-wrap:nowrap">
     <input type="text" id="f-q" inputmode="search" autocomplete="off" placeholder="75192, Halcón o código EAN" style="flex:1 1 auto">
@@ -170,7 +171,7 @@
   </div>
   <div class="note" id="f-save"></div>
   <div class="grid2">
-    <div><label class="f" for="f-store">Tienda de compra</label><input type="text" id="f-store" list="dl-store" autocomplete="off"><datalist id="dl-store"></datalist></div>
+    <div><label class="f" for="f-store">Tienda de compra</label><select id="f-store"></select><input type="text" id="f-store-other" class="hidden" placeholder="Escribe la tienda" autocomplete="off" style="margin-top:6px"></div>
     <div><label class="f" for="f-date">Fecha de compra</label><input type="date" id="f-date"></div>
   </div>
   <label class="f" for="f-where">Dónde está</label>
@@ -202,7 +203,7 @@
 </div></div>
 
 <div id="filters" class="ovl hidden"><div class="panel">
-  <h2>Filtros</h2>
+  <div class="head"><h2>Filtros</h2><button class="x" id="x-x" aria-label="Cerrar">×</button></div>
   <label class="f" for="x-status">Estado</label>
   <select id="x-status"><option value="">Todos</option><option value="wishlist">Deseado</option><option value="owned">Poseído</option><option value="sold">Vendido</option></select>
   <label class="f" for="x-theme">Tema</label><select id="x-theme"></select>

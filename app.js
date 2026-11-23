@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
-import {THEMES,ORDER,artSvg,patternUri} from './themes.js';
+import {THEMES,ORDER,FABS,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.0.1', VERSION_DATE='2026-11-23';
+const VERSION='1.0.3', VERSION_DATE='2026-11-23';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -14,7 +14,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const STATUS={wishlist:'Deseado',owned:'Poseído',sold:'Vendido'};
 
 let toastT;function toast(m){const t=$('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.add('hidden'),3200)}
-function showOnly(id){['boot','nocfg','login','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
+function showOnly(id){if(id!=='app')$('fab').classList.add('hidden');['boot','nocfg','login','denied','app'].forEach(x=>$(x).classList.toggle('hidden',x!==id))}
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.dataset.hide)t.remove()},true);
 
 /* ---------- aspecto ---------- */
@@ -26,7 +26,7 @@ function applyAspecto(k){
   document.body.style.backgroundImage=patternUri(k);
   $('themecolor').setAttribute('content',t.hd);
   $('hero-art').innerHTML=artSvg(k,'Cabecera '+t.label);$('hero-title').textContent=t.title;$('hero-tag').textContent=t.tag;
-  $('login-title').textContent=t.title;document.title=t.title;
+  $('fab').innerHTML=FABS[k];$('login-title').textContent=t.title;document.title=t.title;
   document.querySelectorAll('.asp').forEach(b=>b.classList.toggle('on',b.dataset.k===k));
   LS.set('bricks-aspecto',k);
 }
@@ -82,6 +82,7 @@ function go(t){
   if(t==='add'){openSheet(null);return}
   curTab=t;['home','lib','profile','settings'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $('fab').classList.toggle('hidden',!(t==='home'||t==='lib'));
   if(t==='profile')syncProfile();if(t==='settings')settingsInit();
   window.scrollTo(0,0);renderAll();
 }
@@ -170,11 +171,22 @@ function filterOptions(){
   $('x-theme').innerHTML=opt(th);$('x-year').innerHTML=opt(yr);$('x-store').innerHTML=opt(st);fillFilters();
   $('dl-theme').innerHTML=th.map(x=>`<option value="${esc(x)}">`).join('');
 }
-let sKey='';
+let sKey=null;
+const DEF_STORES=['LEGO Store','Amazon','El Corte Inglés','Carrefour','Juguettos','Smyths','Wallapop'];
 function storeList(){
-  const st=[...new Set(['LEGO Store','Amazon','El Corte Inglés','Carrefour','Juguettos','Smyths','Wallapop',...sets.map(s=>s.store).filter(Boolean)])];
-  const k=st.join('|');if(k===sKey)return;sKey=k;$('dl-store').innerHTML=st.map(x=>`<option value="${esc(x)}">`).join('');
+  const custom=[...new Set(sets.map(s=>s.store).filter(x=>x&&!DEF_STORES.includes(x)))].sort((a,b)=>a.localeCompare(b,'es'));
+  const k=custom.join('|');if(k===sKey)return;sKey=k;
+  const sel=$('f-store'),cur=sel.value;
+  sel.innerHTML='<option value="">Elige tienda</option>'+[...DEF_STORES,...custom].map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('')+'<option value="__other">Otros…</option>';
+  sel.value=[...sel.options].some(o=>o.value===cur)?cur:'';
 }
+const storeVal=()=>$('f-store').value==='__other'?$('f-store-other').value.trim():$('f-store').value;
+function setStore(v){
+  const sel=$('f-store');$('f-store-other').value='';
+  if(!v)sel.value='';else if([...sel.options].some(o=>o.value===v))sel.value=v;else{sel.value='__other';$('f-store-other').value=v}
+  $('f-store-other').classList.toggle('hidden',sel.value!=='__other');
+}
+$('f-store').addEventListener('change',()=>{const o=$('f-store').value==='__other';$('f-store-other').classList.toggle('hidden',!o);if(o)$('f-store-other').focus()});
 function fillFilters(){const f=prefs.f;$('x-status').value=f.status||'';$('x-theme').value=f.theme||'';$('x-year').value=f.year||'';$('x-store').value=f.store||'';$('x-built').value=f.built||'';$('x-gift').checked=!!f.gift;$('x-resale').checked=!!f.resale}
 $('btn-filters').addEventListener('click',()=>{fillFilters();$('filters').classList.remove('hidden')});
 $('x-ok').addEventListener('click',()=>{prefs.f={status:$('x-status').value,theme:$('x-theme').value,year:$('x-year').value,store:$('x-store').value,built:$('x-built').value,gift:$('x-gift').checked,resale:$('x-resale').checked};savePrefs();$('filters').classList.add('hidden');renderLib()});
@@ -182,7 +194,7 @@ $('x-clear').addEventListener('click',()=>{prefs.f={};savePrefs();fillFilters();
 
 /* ---------- formulario de set (se construye una vez, nunca se rehace con la sincronización) ---------- */
 let editing=null,pickResults=[];
-const F=['q','num','year','name','theme','pieces','mini','rrp','paid','store','date','where','img','sale','sdate','notes'];
+const F=['q','num','year','name','theme','pieces','mini','rrp','paid','date','where','img','sale','sdate','notes'];
 function setStatusUI(s){
   document.querySelectorAll('#f-status button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
   $('c-built').classList.toggle('hidden',s!=='owned');$('f-soldbox').classList.toggle('hidden',s!=='sold');calc();
@@ -199,25 +211,25 @@ function preview(){const u=$('f-img').value.trim();$('f-ph').innerHTML=/^https?:
 $('f-img').addEventListener('input',preview);
 function openSheet(s){
   editing=s?s.id:null;pickResults=[];$('f-res').innerHTML='';$('f-msg').textContent='';$('f-err').textContent='';
-  F.forEach(k=>$('f-'+k).value='');
+  F.forEach(k=>$('f-'+k).value='');setStore(s?s.store:'');
   $('sh-title').textContent=s?'Editar set':'Añadir set';$('f-del').classList.toggle('hidden',!s);$('f-del').textContent='Borrar';
   $('f-built').checked=false;$('f-gift').checked=false;$('f-resale').checked=false;
   if(s){
-    const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,store:s.store,date:s.purchaseDate,where:s.location,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
+    const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,where:s.location,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
     Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid'||k==='sale')?String(v).replace('.',','):String(v)});
     $('f-built').checked=!!s.built;$('f-gift').checked=!!s.gift;$('f-resale').checked=!!s.resale;setStatusUI(s.status||'owned');
   }else setStatusUI('owned');
   preview();calc();$('sheet').classList.remove('hidden');$('sheet').querySelector('.panel').scrollTop=0;
 }
 function closeSheet(){stopScan();$('sheet').classList.add('hidden');editing=null}
-$('f-cancel').addEventListener('click',closeSheet);
+$('f-cancel').addEventListener('click',closeSheet);$('sh-x').addEventListener('click',closeSheet);$('x-x').addEventListener('click',()=>$('filters').classList.add('hidden'));$('fab').addEventListener('click',()=>openSheet(null));
 $('f-ok').addEventListener('click',async()=>{
   const g=k=>$('f-'+k).value.trim(),n=k=>parseNum($('f-'+k).value);
   if(!g('name')&&!g('num')){$('f-err').textContent='Escribe el número o el nombre del set.';return}
   for(const k of ['year','pieces','mini','rrp','paid','sale']){if(g(k)&&n(k)==null){$('f-err').textContent='Revisa los números.';return}}
   const st=curStatus();
   const data={addedBy:user.uid,setNumber:g('num'),name:g('name'),theme:g('theme'),year:n('year'),pieces:n('pieces'),minifigs:n('mini'),rrp:n('rrp'),paid:n('paid'),
-    store:g('store'),purchaseDate:g('date'),location:g('where'),notes:g('notes'),imageUrl:g('img'),status:st,built:st==='owned'&&$('f-built').checked,
+    store:storeVal(),purchaseDate:g('date'),location:g('where'),notes:g('notes'),imageUrl:g('img'),status:st,built:st==='owned'&&$('f-built').checked,
     gift:$('f-gift').checked,resale:$('f-resale').checked,salePrice:st==='sold'?n('sale'):null,saleDate:st==='sold'?g('sdate'):'',updatedAt:fb.serverTimestamp()};
   try{
     if(editing)await fb.setDoc(fb.doc(db,'bricks',editing),data,{merge:true});
@@ -234,7 +246,7 @@ let delT;$('f-del').addEventListener('click',async()=>{
 const keys=()=>({bs:cfg.bricksetKey||LS.get('bricks-k-bs',''),rb:cfg.rebrickableKey||LS.get('bricks-k-rb','')});
 async function getJson(url,opts={}){const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);
   try{const r=await fetch(url,{...opts,signal:c.signal});if(!r.ok){const e=new Error('http');e.status=r.status;throw e}return await r.json()}finally{clearTimeout(t)}}
-function bsNorm(s){return{setNumber:(s.numberVariant>1?`${s.number}-${s.numberVariant}`:String(s.number)),name:s.name,theme:s.theme||'',year:s.year??null,pieces:s.pieces??null,minifigs:s.minifigs??null,rrp:s.LEGOCom?.DE?.retailPrice??null,imageUrl:s.image?.imageURL||s.image?.thumbnailURL||''}}
+function bsNorm(s){return{setNumber:(s.numberVariant>1?`${s.number}-${s.numberVariant}`:String(s.number)),name:s.name,theme:s.theme||'',subtheme:s.subtheme||'',year:s.year??null,pieces:s.pieces??null,minifigs:s.minifigs??null,rrp:s.LEGOCom?.DE?.retailPrice??null,imageUrl:s.image?.imageURL||s.image?.thumbnailURL||''}}
 async function bsQuery(params,key){
   const j=await getJson(`https://brickset.com/api/v3.asmx/getSets?apiKey=${encodeURIComponent(key)}&userHash=&params=${encodeURIComponent(JSON.stringify(params))}`);
   if(j.status!=='success'){const e=new Error(j.message||'brickset');e.status=/key/i.test(j.message||'')?401:500;throw e}
@@ -270,6 +282,7 @@ async function runLookup(q){
     if(numq){results=[rbNorm(await rbGet(`/lego/sets/${sn}/`,k.rb))]}
     else{const j=await rbGet(`/lego/sets/?search=${encodeURIComponent(q)}&page_size=10`,k.rb);results=(j.results||[]).map(rbNorm)}
     err=null}catch(e){if(e.status!==404)err=e}}
+  if(!numq&&!ean)results=results.filter(x=>!(x.pieces===0||/^gear$/i.test(x.theme||'')||/video ?games?/i.test(x.subtheme||'')));
   return{results,err};
 }
 function fillFrom(r){
