@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.3.0', VERSION_DATE='2026-11-25';
+const VERSION='1.5.0', VERSION_DATE='2026-11-25';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -101,11 +101,11 @@ window.addEventListener('online',renderAll);window.addEventListener('offline',re
 
 function renderHome(){
   const own=sets.filter(s=>s.status==='owned'),c=own.filter(coll);
-  const mont=c.filter(s=>s.built),por=c.filter(s=>!s.built),reg=own.filter(s=>s.gift),sc=own.filter(s=>s.resale);
+  const mont=c.filter(s=>s.built),por=c.filter(s=>!s.built&&!s.building),proc=c.filter(s=>s.building&&!s.built),reg=own.filter(s=>s.gift),sc=own.filter(s=>s.resale);
   const vend=sets.filter(s=>s.status==='sold'&&s.resale).length;
   const pz=a=>a.reduce((n,s)=>n+(s.pieces||0),0);
   const tile=(n,l,a,cls,extra)=>`<div class="tile" style="background:var(--${cls})"><b>${n}</b><span>${l}</span><small>${num(pz(a))} piezas${extra||''}</small></div>`;
-  $('tiles').innerHTML=tile(mont.length,'Montados',mont,'t1')+tile(por.length,'Por montar',por,'t2')+tile(reg.length,'Para regalar',reg,'t3')+tile(sc.length,'Scalper',sc,'t4',' · '+vend+(vend===1?' vendido':' vendidos'));
+  $('tiles').innerHTML=tile(mont.length,'Montados',mont,'t1')+tile(por.length,'Por montar',por,'t2',proc.length?' · '+proc.length+' en proceso':'')+tile(reg.length,'Para regalar',reg,'t3')+tile(sc.length,'Scalper',sc,'t4',' · '+vend+(vend===1?' vendido':' vendidos'));
   const money_=sets.filter(s=>s.status!=='wishlist');
   const sum=(a,f)=>a.reduce((n,s)=>n+(f(s)||0),0);
   const both=money_.filter(s=>s.rrp!=null&&s.paid!=null);
@@ -124,7 +124,7 @@ function renderHome(){
   $('recent').innerHTML=rec.map(s=>`<button class="th it" style="padding:0;border:0;background:none;display:block" data-id="${s.id}">${phHTML(s)}</button>`).join('');
 }
 const phHTML=(s,photoFirst,ov)=>{const src=photoFirst?(s.photo||s.imageUrl):(s.imageUrl||s.photo),own=!!src&&src===s.photo;
-  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}${ov&&s.status==='owned'&&!s.built?'<span class="ov tr box" role="img" aria-label="Por montar" title="Por montar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>':''}${ov&&s.pieces?`<span class="ov bc">${num(s.pieces)} pzs</span>`:''}</div>`};
+  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}${ov&&s.status==='owned'&&!s.built?(s.building?'<span class="ov tr box prog" role="img" aria-label="En proceso" title="En proceso"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 11V8m5 3V8m5 3V8"/><path d="M5 5h14" stroke-dasharray="2 3"/></svg></span>':'<span class="ov tr box" role="img" aria-label="Por montar" title="Por montar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>'):''}${ov&&s.pieces?`<span class="ov bc">${num(s.pieces)} pzs</span>`:''}</div>`};
 function renderShelf(a){
   const body=$('lib-body'),b=a.filter(s=>s.status==='owned'&&s.built);
   if(!b.length){body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>Aún no hay sets montados. Marca un set como Montado y aparecerá aquí.</div></div>`;return}
@@ -146,18 +146,19 @@ function filtered(){
     if(f.year&&String(s.year)!==f.year)return false;
     if(f.store&&s.store!==f.store)return false;
     if(f.built==='1'&&!(s.status==='owned'&&s.built))return false;
-    if(f.built==='0'&&!(s.status==='owned'&&!s.built))return false;
+    if(f.built==='0'&&!(s.status==='owned'&&!s.built&&!s.building))return false;
+    if(f.built==='2'&&!(s.status==='owned'&&s.building&&!s.built))return false;
     if(f.gift&&!s.gift)return false;if(f.resale&&!s.resale)return false;if(f.used&&!s.used)return false;return true});
   const k=prefs.sort,d=prefs.dir;
-  const val=s=>k==='name'?(s.name||''):k==='num'?parseInt(s.setNumber,10):k==='year'?s.year:k==='pieces'?s.pieces:k==='state'?(s.status==='wishlist'?0:s.status==='sold'?3:s.built?2:1):s.paid;
+  const val=s=>k==='name'?(s.name||''):k==='num'?parseInt(s.setNumber,10):k==='year'?s.year:k==='pieces'?s.pieces:k==='state'?(s.status==='wishlist'?0:s.status==='sold'?4:s.built?3:s.building?2:1):s.paid;
   a.sort((x,y)=>{const A=val(x),B=val(y);const an=A==null||(typeof A==='number'&&isNaN(A)),bn=B==null||(typeof B==='number'&&isNaN(B));
     if(an&&bn)return 0;if(an)return 1;if(bn)return -1;return (typeof A==='string'?A.localeCompare(B,'es'):A-B)*d});
   return a;
 }
-function badges(s){return (s.built&&s.status==='owned'?'<span class="badge">Montado</span>':'')+(s.gift?'<span class="badge">Regalo</span>':'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
+function badges(s){return (s.built&&s.status==='owned'?'<span class="badge">Montado</span>':'')+(s.building&&!s.built&&s.status==='owned'?'<span class="badge">En proceso</span>':'')+(s.gift?'<span class="badge">Regalo</span>':'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
 function renderLib(){
   const c=sets.filter(coll);
-  $('lib-tot').innerHTML=`<span class="chip">${c.length} sets</span><span class="chip">${num(c.reduce((n,s)=>n+(s.pieces||0),0))} piezas</span><span class="chip">${c.filter(s=>s.built).length} montado${c.filter(s=>s.built).length===1?'':'s'}</span><span class="chip">${c.filter(s=>!s.built).length} en caja</span>`;
+  $('lib-tot').innerHTML=`<span class="chip">${c.length} sets</span><span class="chip">${num(c.reduce((n,s)=>n+(s.pieces||0),0))} piezas</span><span class="chip">${c.filter(s=>s.built).length} montado${c.filter(s=>s.built).length===1?'':'s'}</span><span class="chip">${c.filter(s=>!s.built&&!s.building).length} en caja</span>${c.some(s=>s.building&&!s.built)?`<span class="chip">${c.filter(s=>s.building&&!s.built).length} en proceso</span>`:''}`;
   document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v===prefs.view));
   $('lib-sort').value=prefs.sort;$('lib-dir').textContent=prefs.dir===1?'↑':'↓';
   const a=filtered(),v=prefs.view,body=$('lib-body');
@@ -214,7 +215,7 @@ let editing=null,pickResults=[];
 const F=['q','num','year','name','theme','pieces','mini','rrp','paid','date','img','sale','sdate','notes'];
 function setStatusUI(s){
   document.querySelectorAll('#f-status button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
-  $('c-built').classList.toggle('hidden',s!=='owned');$('f-soldbox').classList.toggle('hidden',s!=='sold');calc();
+  $('c-built').classList.toggle('hidden',s!=='owned');$('c-building').classList.toggle('hidden',s!=='owned');$('f-soldbox').classList.toggle('hidden',s!=='sold');calc();
 }
 const curStatus=()=>document.querySelector('#f-status button.on')?.dataset.s||'owned';
 $('f-status').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setStatusUI(b.dataset.s)});
@@ -235,14 +236,15 @@ function openSheet(s){
   editing=s?s.id:null;pickResults=[];$('f-res').innerHTML='';$('f-msg').textContent='';$('f-err').textContent='';
   F.forEach(k=>$('f-'+k).value='');setChoice(CH.store,s?s.store:'');setChoice(CH.where,s?s.location:'');pendingPhoto=s?(s.photo||''):'';photoUI();
   $('sh-title').textContent=s?'Editar set':'Añadir set';$('f-del').classList.toggle('hidden',!s);$('f-del').textContent='Borrar';
-  $('f-built').checked=false;$('f-gift').checked=false;$('f-resale').checked=false;$('f-used').checked=false;
+  $('f-built').checked=false;$('f-building').checked=false;$('f-gift').checked=false;$('f-resale').checked=false;$('f-used').checked=false;
   if(s){
     const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
     Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid'||k==='sale')?String(v).replace('.',','):String(v)});
-    instrLink();$('f-built').checked=!!s.built;$('f-gift').checked=!!s.gift;$('f-resale').checked=!!s.resale;$('f-used').checked=!!s.used;setStatusUI(s.status||'owned');
+    $('f-built').checked=!!s.built;$('f-building').checked=!!s.building&&!s.built;$('f-gift').checked=!!s.gift;$('f-resale').checked=!!s.resale;$('f-used').checked=!!s.used;setStatusUI(s.status||'owned');
   }else setStatusUI('owned');
-  preview();calc();$('sheet').classList.remove('hidden');$('sheet').querySelector('.panel').scrollTop=0;
+  instrLink();preview();calc();$('sheet').classList.remove('hidden');$('sheet').querySelector('.panel').scrollTop=0;
 }
+$('sheet').addEventListener('click',e=>{if(e.target===$('sheet'))closeSheet()});$('filters').addEventListener('click',e=>{if(e.target===$('filters'))$('filters').classList.add('hidden')});
 function closeSheet(){stopScan();$('sheet').classList.add('hidden');editing=null}
 $('f-cancel').addEventListener('click',closeSheet);$('sh-x').addEventListener('click',closeSheet);$('x-x').addEventListener('click',()=>$('filters').classList.add('hidden'));$('fab').addEventListener('click',()=>openSheet(null));
 $('f-ok').addEventListener('click',async()=>{
@@ -251,7 +253,7 @@ $('f-ok').addEventListener('click',async()=>{
   for(const k of ['year','pieces','mini','rrp','paid','sale']){if(g(k)&&n(k)==null){$('f-err').textContent='Revisa los números.';return}}
   const st=curStatus();
   const data={addedBy:user.uid,setNumber:g('num'),name:g('name'),theme:g('theme'),year:n('year'),pieces:n('pieces'),minifigs:n('mini'),rrp:n('rrp'),paid:n('paid'),
-    store:choiceVal(CH.store),purchaseDate:g('date'),location:choiceVal(CH.where),photo:pendingPhoto,notes:g('notes'),imageUrl:g('img'),status:st,built:st==='owned'&&$('f-built').checked,
+    store:choiceVal(CH.store),purchaseDate:g('date'),location:choiceVal(CH.where),photo:pendingPhoto,notes:g('notes'),imageUrl:g('img'),status:st,built:st==='owned'&&$('f-built').checked,building:st==='owned'&&$('f-building').checked&&!$('f-built').checked,
     gift:$('f-gift').checked,resale:$('f-resale').checked,used:$('f-used').checked,salePrice:st==='sold'?n('sale'):null,saleDate:st==='sold'?g('sdate'):'',updatedAt:fb.serverTimestamp()};
   try{
     if(editing)await fb.setDoc(fb.doc(db,'bricks',editing),data,{merge:true});
@@ -399,6 +401,17 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(
 boot();
 
 /* ---------- enlace a las instrucciones ---------- */
-function instrLink(){const l=$('f-instr');if(!l)return;const n=($('f-num').value||'').trim().replace(/-\d+$/,'').replace(/\D/g,'');
-  if(n){l.href='https://www.lego.com/service/buildinginstructions/'+n;l.classList.remove('hidden')}else{l.classList.add('hidden');l.removeAttribute('href')}}
+const instrCache=new Map();let instrTok=0;
+function instrLink(){const l=$('f-instr');if(!l)return;const n=($('f-num').value||'').trim().replace(/-\d+$/,'').replace(/\D/g,''),tok=++instrTok;
+  if(!n){l.classList.add('hidden');l.removeAttribute('href');return}
+  const setDirect=u=>{if(tok!==instrTok)return;if(u){l.href=u;l.textContent='Descargar manual (PDF)'}else{l.href='https://www.lego.com/service/buildinginstructions/'+n;l.textContent='Ver manual de instrucciones (LEGO)'}l.classList.remove('hidden')};
+  setDirect(instrCache.get(n)||null);
+  if(instrCache.has(n))return;const k=keys().bs;if(!k)return;
+  clearTimeout(instrLink.t);instrLink.t=setTimeout(async()=>{
+    try{const j=await getJson(`https://brickset.com/api/v3.asmx/getInstructions2?apiKey=${encodeURIComponent(k)}&setNumber=${encodeURIComponent(n+'-1')}`);
+      const list=(j.instructions||[]).map(x=>x.URL||x.url).filter(u=>typeof u==='string'&&/^https:\/\//i.test(u)),u=list.find(x=>/\.pdf(\?|$)/i.test(x))||list[0]||'';
+      instrCache.set(n,u);setDirect(u)}catch{}},400)}
 $('f-num').addEventListener('input',instrLink);
+
+$('f-built').addEventListener('change',()=>{if($('f-built').checked)$('f-building').checked=false});
+$('f-building').addEventListener('change',()=>{if($('f-building').checked)$('f-built').checked=false});

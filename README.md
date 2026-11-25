@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.3.0
+Version: 1.5.0
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.3.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.5.0", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -19,7 +19,7 @@ Date: 25 November 2026
 
 ## Data
 Sets live in the collection "bricks". Every set carries addedBy (the signed in user's uid). Profile and shared settings live in "bricksMeta", so "bricks" holds only sets.
-- Sets: setNumber, name, theme, year, pieces, minifigs, rrp (PVP), paid, store, purchaseDate, location, notes, imageUrl (web address only), photo (small JPEG of your own set, optional), status ("wishlist", "owned" or "sold"), built (boolean), gift (boolean), resale (boolean), used (boolean, second hand), salePrice, saleDate
+- Sets: setNumber, name, theme, year, pieces, minifigs, rrp (PVP), paid, store, purchaseDate, location, notes, imageUrl (web address only), photo (small JPEG of your own set, optional), status ("wishlist", "owned" or "sold"), built (boolean), building (boolean, being built now), gift (boolean), resale (boolean), used (boolean, second hand), salePrice, saleDate
 - bricksMeta/<uid>: name, insidersNumber, cardImage (small JPEG), aspecto
 - bricksMeta/config: bricksetKey, rebrickableKey (shared settings, written from the owner account)
 
@@ -31,6 +31,12 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.5.0 (2026-11-25): new "En proceso de montaje" option for sets you are building now, with its own icon, badge, filter, sort position and count.
+
+1.4.1 (2026-11-25): tapping outside the set sheet or the filters closes them; the manual button no longer keeps the previous set when adding a new one.
+
+1.4.0 (2026-11-25): the manual button asks Brickset (getInstructions2) for the direct PDF and uses it when found, otherwise it opens the LEGO instructions page.
+
 1.3.0 (2026-11-25): bigger box icon for unbuilt sets; sort by Estado; new Segunda mano checkbox with badge and filter; opening a set no longer fails if index.html is out of date.
 
 1.2.1 (2026-11-25): the "Por montar" marker on library pictures is now a small box icon.
