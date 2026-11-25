@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.1.0
-Date: 23 November 2026
+Version: 1.2.1
+Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.1.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.2.1", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -31,6 +31,10 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.2.1 (2026-11-25): the "Por montar" marker on library pictures is now a small box icon.
+
+1.2.0 (2026-11-25): library pictures show a "Por montar" box (owned, not built) and the piece count; link to the LEGO building instructions page in the set sheet, built from the set number.
+
 1.1.0 (2026-11-23): new Estantería view showing built sets on shelf planks, grouped by where they are displayed; optional photo of your own set (camera or gallery, shrunk and saved in the set); Dónde está is now a dropdown like the store.
 1.0.3 (2026-11-23): name searches no longer show LEGO branded video games or other items with no pieces (Gear). Searching by set number is unchanged.
 1.0.2 (2026-11-23): store dropdown with Otros and a typing box; X at the top right of the add and filter sheets; add button moved to the bottom right with a different shape per look.

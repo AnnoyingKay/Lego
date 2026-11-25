@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.1.0', VERSION_DATE='2026-11-23';
+const VERSION='1.2.1', VERSION_DATE='2026-11-25';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -123,8 +123,8 @@ function renderHome(){
   $('home-recent').classList.toggle('hidden',!rec.length);
   $('recent').innerHTML=rec.map(s=>`<button class="th it" style="padding:0;border:0;background:none;display:block" data-id="${s.id}">${phHTML(s)}</button>`).join('');
 }
-const phHTML=(s,photoFirst)=>{const src=photoFirst?(s.photo||s.imageUrl):(s.imageUrl||s.photo),own=!!src&&src===s.photo;
-  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}</div>`};
+const phHTML=(s,photoFirst,ov)=>{const src=photoFirst?(s.photo||s.imageUrl):(s.imageUrl||s.photo),own=!!src&&src===s.photo;
+  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}${ov&&s.status==='owned'&&!s.built?'<span class="ov tr box" role="img" aria-label="Por montar" title="Por montar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>':''}${ov&&s.pieces?`<span class="ov bc">${num(s.pieces)} pzs</span>`:''}</div>`};
 function renderShelf(a){
   const body=$('lib-body'),b=a.filter(s=>s.status==='owned'&&s.built);
   if(!b.length){body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>Aún no hay sets montados. Marca un set como Montado y aparecerá aquí.</div></div>`;return}
@@ -165,7 +165,7 @@ function renderLib(){
   if(!a.length){
     body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>${sets.length?'Ningún set con estos filtros.':'Aún no hay sets. Añade el primero.'}</div></div>`;return}
   if(v==='grid-s'||v==='grid-l')
-    body.innerHTML=`<div class="grid ${v==='grid-s'?'s':'l'}">${a.map(s=>`<button class="gi" data-id="${s.id}">${phHTML(s)}<b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')}${v==='grid-l'?' · '+num(s.pieces)+' pzs':''}</span>${v==='grid-l'?badges(s):''}</button>`).join('')}</div>`;
+    body.innerHTML=`<div class="grid ${v==='grid-s'?'s':'l'}">${a.map(s=>`<button class="gi" data-id="${s.id}">${phHTML(s,false,true)}<b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')}${v==='grid-l'?' · '+num(s.pieces)+' pzs':''}</span>${v==='grid-l'?badges(s):''}</button>`).join('')}</div>`;
   else
     body.innerHTML=`<div class="list">${a.map(s=>`<button class="it ${v==='list'?'noimg':''}" data-id="${s.id}">${phHTML(s)}<div class="tx"><b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')} · ${esc(s.theme||'—')} · ${s.year||'—'} · ${num(s.pieces)} pzs</span><span>${STATUS[s.status]||''} ${badges(s)}${s.paid!=null?' · '+money(s.paid):''}</span></div></button>`).join('')}</div>`;
 }
@@ -239,7 +239,7 @@ function openSheet(s){
   if(s){
     const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
     Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid'||k==='sale')?String(v).replace('.',','):String(v)});
-    $('f-built').checked=!!s.built;$('f-gift').checked=!!s.gift;$('f-resale').checked=!!s.resale;setStatusUI(s.status||'owned');
+    instrLink();$('f-built').checked=!!s.built;$('f-gift').checked=!!s.gift;$('f-resale').checked=!!s.resale;setStatusUI(s.status||'owned');
   }else setStatusUI('owned');
   preview();calc();$('sheet').classList.remove('hidden');$('sheet').querySelector('.panel').scrollTop=0;
 }
@@ -397,3 +397,8 @@ $('btn-login').addEventListener('click',async()=>{
 
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 boot();
+
+/* ---------- enlace a las instrucciones ---------- */
+function instrLink(){const n=($('f-num').value||'').trim().replace(/-\d+$/,'').replace(/\D/g,''),l=$('f-instr');
+  if(n){l.href='https://www.lego.com/service/buildinginstructions/'+n;l.classList.remove('hidden')}else{l.classList.add('hidden');l.removeAttribute('href')}}
+$('f-num').addEventListener('input',instrLink);
