@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.5.0
+Version: 1.6.0
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.5.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.6.0", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -31,6 +31,10 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.6.0 (2026-11-25): "Mostrar tarjeta" now draws a digital member card (your sign in email and a Code 128 barcode made from your number) with no photo needed. The photo, if saved, shows under it.
+
+1.5.1 (2026-11-25): the "En proceso" badge now has its own amber colour.
+
 1.5.0 (2026-11-25): new "En proceso de montaje" option for sets you are building now, with its own icon, badge, filter, sort position and count.
 
 1.4.1 (2026-11-25): tapping outside the set sheet or the filters closes them; the manual button no longer keeps the previous set when adding a new one.

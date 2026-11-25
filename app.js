@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.5.0', VERSION_DATE='2026-11-25';
+const VERSION='1.6.0', VERSION_DATE='2026-11-25';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -155,7 +155,7 @@ function filtered(){
     if(an&&bn)return 0;if(an)return 1;if(bn)return -1;return (typeof A==='string'?A.localeCompare(B,'es'):A-B)*d});
   return a;
 }
-function badges(s){return (s.built&&s.status==='owned'?'<span class="badge">Montado</span>':'')+(s.building&&!s.built&&s.status==='owned'?'<span class="badge">En proceso</span>':'')+(s.gift?'<span class="badge">Regalo</span>':'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
+function badges(s){return (s.built&&s.status==='owned'?'<span class="badge">Montado</span>':'')+(s.building&&!s.built&&s.status==='owned'?'<span class="badge prog">En proceso</span>':'')+(s.gift?'<span class="badge">Regalo</span>':'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
 function renderLib(){
   const c=sets.filter(coll);
   $('lib-tot').innerHTML=`<span class="chip">${c.length} sets</span><span class="chip">${num(c.reduce((n,s)=>n+(s.pieces||0),0))} piezas</span><span class="chip">${c.filter(s=>s.built).length} montado${c.filter(s=>s.built).length===1?'':'s'}</span><span class="chip">${c.filter(s=>!s.built&&!s.building).length} en caja</span>${c.some(s=>s.building&&!s.built)?`<span class="chip">${c.filter(s=>s.building&&!s.built).length} en proceso</span>`:''}`;
@@ -363,8 +363,29 @@ let pT;async function saveProfile(patch){
 $('aspectos').addEventListener('click',e=>{const b=e.target.closest('.asp');if(!b)return;applyAspecto(b.dataset.k);saveProfile({aspecto:b.dataset.k})});
 $('p-photo').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{saveProfile({cardImage:await shrink(f,900,.72)});toast('Foto guardada')}catch{toast('No se pudo leer la foto')}});
 $('p-delphoto').addEventListener('click',()=>saveProfile({cardImage:''}));
+/* ---------- tarjeta digital con código de barras (Code 128, generado aquí) ---------- */
+const C128=['11011001100','11001101100','11001100110','10010011000','10010001100','10001001100','10011001000','10011000100','10001100100','11001001000','11001000100','11000100100','10110011100','10011011100','10011001110','10111001100','10011101100','10011100110','11001110010','11001011100','11001001110','11011100100','11001110100','11101101110','11101001100','11100101100','11100100110','11101100100','11100110100','11100110010','11011011000','11011000110','11000110110','10100011000','10001011000','10001000110','10110001000','10001101000','10001100010','11010001000','11000101000','11000100010','10110111000','10110001110','10001101110','10111011000','10111000110','10001110110','11101110110','11010001110','11000101110','11011101000','11011100010','11011101110','11101011000','11101000110','11100010110','11101101000','11101100010','11100011010','11101111010','11001000010','11110001010','10100110000','10100001100','10010110000','10010000110','10000101100','10000100110','10110010000','10110000100','10011010000','10011000010','10000110100','10000110010','11000010010','11001010000','11110111010','11000010100','10001111010','10100111100','10010111100','10010011110','10111100100','10011110100','10011110010','11110100100','11110010100','11110010010','11011011110','11011110110','11110110110','10101111000','10100011110','10001011110','10111101000','10111100010','11110101000','11110100010','10111011110','10111101110','11101011110','11110101110','11010000100','11010010000','11010011100','1100011101011'];
+function code128(str){
+  const v=[];const dig=/^\d+$/.test(str);
+  if(dig&&str.length>=2){let i=0;if(str.length%2){v.push(104,str.charCodeAt(0)-32,99);i=1}else v.push(105);
+    for(;i<str.length;i+=2)v.push(parseInt(str.substr(i,2),10))}
+  else{v.push(104);for(const ch of str)v.push(Math.max(0,Math.min(94,ch.charCodeAt(0)-32)))}
+  let sum=v[0];for(let i=1;i<v.length;i++)sum+=v[i]*i;v.push(sum%103,106);
+  return v.map(x=>C128[x]).join('');
+}
+function barcodeSvg(str){
+  const m=code128(str),q=10;let x=q,r='';
+  for(let i=0;i<m.length;){if(m[i]==='1'){let j=i;while(m[j]==='1')j++;r+=`<rect x="${x+i}" y="0" width="${j-i}" height="60"/>`;i=j}else i++}
+  return `<svg viewBox="0 0 ${m.length+q*2} 60" preserveAspectRatio="none" role="img" aria-label="Código de barras ${esc(str)}" fill="#000">${r}</svg>`;
+}
+function cardHTML(){
+  const n=($('p-num').value||'').replace(/\s+/g,''),email=user?.email||'',name=($('p-name').value||'').trim();
+  const diam='<svg class="lc-art" viewBox="0 0 300 90" aria-hidden="true" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="6"><path d="M60 90 150 0l90 90M20 90 150-40l130 130"/></svg>';
+  return `<div class="lcard"><div class="lc-top"><b>Bricks</b><span>Tarjeta de socio</span></div>${name?`<div class="lc-l">Nombre</div><div class="lc-v">${esc(name)}</div>`:''}<div class="lc-l">Email</div><div class="lc-v">${esc(email)}</div>
+    ${n?`<div class="bcbox">${barcodeSvg(n)}<div class="bcnum">${esc(n)}</div></div>`:'<div class="bcbox"><div class="bcnum" style="letter-spacing:0;font-size:14px">Añade tu número de socio en el perfil</div></div>'}${diam}</div>`;
+}
 $('p-showcard').addEventListener('click',()=>{
-  $('cf-name').textContent=$('p-name').value||'';$('cf-num').textContent=$('p-num').value||'';
+  $('cf-card').innerHTML=cardHTML();
   const im=$('cf-img');im.classList.toggle('hidden',!profile.cardImage);if(profile.cardImage)im.src=profile.cardImage;$('cardfull').classList.remove('hidden');
 });
 $('cf-close').addEventListener('click',()=>$('cardfull').classList.add('hidden'));
