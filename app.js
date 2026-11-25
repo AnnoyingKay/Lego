@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.7.0', VERSION_DATE='2026-11-25';
+const VERSION='1.12.0', VERSION_DATE='2026-11-25';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -81,10 +81,10 @@ function lastTxt(){const t=Number(LS.get('bricks-lastsync','0'));$('s-last').tex
 let curTab='home';
 function go(t){
   if(t==='add'){openSheet(null);return}
-  curTab=t;['home','lib','profile','settings'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
+  curTab=t;['home','lib','wish','parts','profile','settings'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
-  $('fab').classList.toggle('hidden',!(t==='home'||t==='lib'));
-  if(t==='profile')syncProfile();if(t==='settings')settingsInit();
+  $('fab').classList.toggle('hidden',!(t==='home'||t==='lib'||t==='wish'));
+  if(t==='parts')renderParts();if(t==='profile')syncProfile();if(t==='settings')settingsInit();
   window.scrollTo(0,0);renderAll();
 }
 $('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.tab)});
@@ -95,6 +95,8 @@ function renderAll(){
   $('offline').classList.toggle('hidden',navigator.onLine!==false);
   if(curTab==='home')renderHome();
   if(curTab==='lib')renderLib();
+  if(curTab==='parts')renderParts();
+  if(curTab==='wish')renderWish();
   filterOptions();choiceList();
 }
 window.addEventListener('online',renderAll);window.addEventListener('offline',renderAll);
@@ -102,14 +104,17 @@ window.addEventListener('online',renderAll);window.addEventListener('offline',re
 function renderHome(){
   const own=sets.filter(s=>s.status==='owned'),c=own.filter(coll);
   const mont=c.filter(s=>s.built),por=c.filter(s=>!s.built&&!s.building),proc=c.filter(s=>s.building&&!s.built),reg=own.filter(s=>s.gift),sc=own.filter(s=>s.resale);
-  const vend=sets.filter(s=>s.status==='sold'&&s.resale).length;
-  const pz=a=>a.reduce((n,s)=>n+(s.pieces||0),0);
-  const tile=(n,l,a,cls,extra)=>`<div class="tile" style="background:var(--${cls})"><b>${n}</b><span>${l}</span><small>${num(pz(a))} piezas${extra||''}</small></div>`;
-  $('tiles').innerHTML=tile(mont.length,'Montados',mont,'t1')+tile(por.length,'Por montar',por,'t2',proc.length?' · '+proc.length+' en proceso':'')+tile(reg.length,'Para regalar',reg,'t3')+tile(sc.length,'Scalper',sc,'t4',' · '+vend+(vend===1?' vendido':' vendidos'));
+    const pz=a=>a.reduce((n,s)=>n+(s.pieces||0),0);
+    const soldAll=sets.filter(s=>s.status==='sold'),wish=sets.filter(s=>s.status==='wishlist');
+  const benS=soldAll.reduce((n,s)=>n+((s.salePrice!=null&&s.paid!=null)?s.salePrice-s.paid:0),0);
+  const tile=(n,l,a,cls,go,extra)=>`<button type="button" class="tile" data-go="${go}" style="background:var(--${cls})"><b>${n}</b><span>${l}</span><small>${num(pz(a))} piezas${extra||''}</small></button>`;
+  $('tiles').innerHTML=tile(mont.length,'Montados',mont,'t1','mont')+tile(por.length,'Por montar',por,'t2','por',proc.length?' · '+proc.length+' en proceso':'')+tile(reg.length,'Para regalar',reg,'t3','reg')+tile(sc.length,'Scalper',sc,'t4','sc')
+    +tile(soldAll.length,'Vendidos',soldAll,'t2','sold',soldAll.length&&benS?' · '+(benS>=0?'+':'−')+money(Math.abs(benS)):'')+tile(wish.length,'Deseos',wish,'t1','wish',wish.some(s=>s.rrp)?' · PVP '+money(wish.reduce((n,s)=>n+(s.rrp||0),0)):'');
   const money_=sets.filter(s=>s.status!=='wishlist');
   const sum=(a,f)=>a.reduce((n,s)=>n+(f(s)||0),0);
   const both=money_.filter(s=>s.rrp!=null&&s.paid!=null);
   const ahorro=sum(both,s=>s.rrp-s.paid);
+  const potS=sets.filter(s=>s.resale&&s.status!=='sold'&&s.potPrice!=null&&(s.paid!=null?s.paid:s.rrp)),potN=potS.length,potB=sum(potS,s=>s.potPrice-(s.paid!=null?s.paid:s.rrp));
   const ben=sum(sets.filter(s=>s.status==='sold'&&s.salePrice!=null&&s.paid!=null),s=>s.salePrice-s.paid);
   $('home-money').innerHTML=`<h3>Cuentas</h3>
    <div class="kv"><span>Piezas en tu colección</span><b>${num(pz(c))}</b></div>
@@ -117,14 +122,16 @@ function renderHome(){
    <div class="kv"><span>Total pagado</span><b>${money(sum(money_,s=>s.paid))}</b></div>
    <div class="kv"><span>Total PVP</span><b>${money(sum(money_,s=>s.rrp))}</b></div>
    <div class="kv"><span>Ahorrado frente al PVP</span><b>${money(ahorro)}</b></div>
-   <div class="kv"><span>Beneficio de ventas</span><b>${money(ben)}</b></div>
+   <div class="kv"><span>Beneficio de ventas</span><b>${money(ben)}</b></div>${potN?`<div class="kv"><span>Beneficio previsto (scalper)</span><b>${money(potB)}</b></div>`:''}
    <div class="kv"><span>Deseados</span><b>${sets.filter(s=>s.status==='wishlist').length}</b></div>`;
-  const rec=[...sets].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,8);
+  const rec=sets.filter(s=>s.status!=='wishlist').sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,8);
   $('home-recent').classList.toggle('hidden',!rec.length);
   $('recent').innerHTML=rec.map(s=>`<button class="th it" style="padding:0;border:0;background:none;display:block" data-id="${s.id}">${phHTML(s)}</button>`).join('');
 }
+const copiesN=s=>{if(s.status!=='owned')return 0;const n=(s.setNumber||'').trim().replace(/-1$/,'');return n?sets.filter(x=>x.status==='owned'&&(x.setNumber||'').trim().replace(/-1$/,'')===n).length:0};
+const GIFT='<svg viewBox="0 0 24 24" width="{S}" height="{S}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="3" y="9" width="18" height="4" rx="1"/><path d="M5 13v7h14v-7M12 9v11M12 9S9 8.500 8.500 6.500 10 4 12 9c2-5 3.500-4.500 3.500-2.500S12 9 12 9z"/></svg>';
 const phHTML=(s,photoFirst,ov)=>{const src=photoFirst?(s.photo||s.imageUrl):(s.imageUrl||s.photo),own=!!src&&src===s.photo;
-  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}${ov&&s.status==='owned'&&!s.built?(s.building?'<span class="ov tr box prog" role="img" aria-label="En proceso" title="En proceso"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 11V8m5 3V8m5 3V8"/><path d="M5 5h14" stroke-dasharray="2 3"/></svg></span>':'<span class="ov tr box" role="img" aria-label="Por montar" title="Por montar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>'):''}${ov&&s.pieces?`<span class="ov bc">${num(s.pieces)} pzs</span>`:''}</div>`};
+  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}${ov&&s.status==='owned'&&!s.built?(s.building?'<span class="ov tr box prog" role="img" aria-label="En proceso" title="En proceso"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 11V8m5 3V8m5 3V8"/><path d="M5 5h14" stroke-dasharray="2 3"/></svg></span>':'<span class="ov tr box" role="img" aria-label="Por montar" title="Por montar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>'):''}${ov&&s.gift?`<span class="ov tl gift" role="img" aria-label="Para regalar" title="Para regalar">${GIFT.replace(/\{S\}/g,24)}</span>`:''}${ov&&s.pieces?`<span class="ov bc">${num(s.pieces)} pzs${copiesN(s)>1?' · ×'+copiesN(s):''}</span>`:''}</div>`};
 function renderShelf(a){
   const body=$('lib-body'),b=a.filter(s=>s.status==='owned'&&s.built);
   if(!b.length){body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>Aún no hay sets montados. Marca un set como Montado y aparecerá aquí.</div></div>`;return}
@@ -132,7 +139,7 @@ function renderShelf(a){
   const keys=[...g.keys()].sort((x,y)=>!x?1:!y?-1:x.localeCompare(y,'es'));
   body.innerHTML=`<div class="note" style="padding:10px 14px 0">${b.length} montado${b.length===1?'':'s'} en la estantería</div>`+keys.map(k=>{
     const items=g.get(k);let rows='';
-    for(let i=0;i<items.length;i+=3)rows+=`<div class="srow">${items.slice(i,i+3).map(s=>`<button class="si" data-id="${s.id}">${phHTML(s,true)}<b>${esc(s.name||s.setNumber)}</b></button>`).join('')}</div><div class="plank"></div>`;
+    for(let i=0;i<items.length;i+=3)rows+=`<div class="srow">${items.slice(i,i+3).map(s=>`<button class="si" data-id="${s.id}">${phHTML(s,true)}<b>${esc(s.name||s.setNumber)}${copiesN(s)>1?' <span class="cp">×'+copiesN(s)+'</span>':''}</b></button>`).join('')}</div><div class="plank"></div>`;
     return `<div class="shelfgrp"><h3><span>${esc(k||'Sin ubicación')}</span><span class="chip">${items.length}</span></h3>${rows}</div>`}).join('');
 }
 
@@ -141,6 +148,8 @@ function filtered(){
   const f=prefs.f,q=($('lib-q').value||'').trim().toLowerCase();
   let a=sets.filter(s=>{
     if(q&&!(`${s.name||''} ${s.setNumber||''}`.toLowerCase().includes(q)))return false;
+    if(s.status==='wishlist')return false;
+    if(f.coll&&!coll(s))return false;
     if(f.status&&s.status!==f.status)return false;
     if(f.theme&&s.theme!==f.theme)return false;
     if(f.year&&String(s.year)!==f.year)return false;
@@ -150,32 +159,42 @@ function filtered(){
     if(f.built==='2'&&!(s.status==='owned'&&s.building&&!s.built))return false;
     if(f.gift&&!s.gift)return false;if(f.resale&&!s.resale)return false;if(f.used&&!s.used)return false;return true});
   const k=prefs.sort,d=prefs.dir;
-  const val=s=>k==='name'?(s.name||''):k==='num'?parseInt(s.setNumber,10):k==='year'?s.year:k==='pieces'?s.pieces:k==='state'?(s.status==='wishlist'?0:s.status==='sold'?4:s.built?3:s.building?2:1):s.paid;
+  const val=s=>k==='name'?(s.name||''):k==='theme'?(s.theme||null):k==='num'?parseInt(s.setNumber,10):k==='year'?s.year:k==='pieces'?s.pieces:k==='state'?(s.status==='wishlist'?0:s.status==='sold'?4:s.built?3:s.building?2:1):s.paid;
   a.sort((x,y)=>{const A=val(x),B=val(y);const an=A==null||(typeof A==='number'&&isNaN(A)),bn=B==null||(typeof B==='number'&&isNaN(B));
-    if(an&&bn)return 0;if(an)return 1;if(bn)return -1;return (typeof A==='string'?A.localeCompare(B,'es'):A-B)*d});
+    if(an&&bn)return k==='theme'?(x.name||'').localeCompare(y.name||'','es'):0;if(an)return 1;if(bn)return -1;const c=(typeof A==='string'?A.localeCompare(B,'es'):A-B);return (c||(k==='theme'?(x.name||'').localeCompare(y.name||'','es'):0))*d});
   return a;
 }
-function badges(s){return (s.built&&s.status==='owned'?'<span class="badge ok">Montado</span>':'')+(s.status==='owned'&&!s.built&&!s.building?'<span class="badge un">Por montar</span>':'')+(s.building&&!s.built&&s.status==='owned'?'<span class="badge prog">En proceso</span>':'')+(s.gift?'<span class="badge">Regalo</span>':'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
+const pcTxt=s=>{if(s.status==='wishlist'||!s.rrp||s.paid==null)return '';const d=(s.rrp-s.paid)/s.rrp*100;if(Math.abs(d)<0.5)return '';
+  return d>0?`<span class="pc up">ahorro ${d.toFixed(0)} %</span>`:`<span class="pc down">sobre PVP ${Math.abs(d).toFixed(0)} %</span>`};
+const profTxt=s=>{if(s.status!=='sold'||s.salePrice==null||s.paid==null)return '';const p=s.salePrice-s.paid;return `<span class="pc ${p>=0?'up':'down'}">${p>=0?'beneficio +':'pérdida '}${money(Math.abs(p))}</span>`};
+const potTxt=s=>{if(!s.resale||s.status==='sold'||s.potPrice==null)return '';const base=s.paid!=null?s.paid:s.rrp;if(!base)return '';const b=s.potPrice-base;return `<span class="pc ${b>=0?'up':'down'}">previsto ${b>=0?'+':'−'}${money(Math.abs(b))} (${(Math.abs(b)/base*100).toFixed(0)} %)</span>`};
+function badges(s){return (copiesN(s)>1?`<span class="badge">×${copiesN(s)} copias</span>`:'')+pcTxt(s)+profTxt(s)+potTxt(s)+(s.built&&s.status==='owned'?'<span class="badge ok">Montado</span>':'')+(s.status==='owned'&&!s.built&&!s.building?'<span class="badge un">Por montar</span>':'')+(s.building&&!s.built&&s.status==='owned'?'<span class="badge prog">En proceso</span>':'')+(s.gift?`<span class="badge">${GIFT.replace(/\{S\}/g,11)} Regalo</span>`:'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
 function renderLib(){
   const c=sets.filter(coll);
   $('lib-tot').innerHTML=`<span class="chip">${c.length} sets</span><span class="chip">${num(c.reduce((n,s)=>n+(s.pieces||0),0))} piezas</span><span class="chip">${c.filter(s=>s.built).length} montado${c.filter(s=>s.built).length===1?'':'s'}</span><span class="chip">${c.filter(s=>!s.built&&!s.building).length} en caja</span>${c.some(s=>s.building&&!s.built)?`<span class="chip">${c.filter(s=>s.building&&!s.built).length} en proceso</span>`:''}`;
-  document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v===prefs.view));
+  {const n=Object.entries(prefs.f||{}).filter(([,v])=>v).length;if(n)$('lib-tot').insertAdjacentHTML('beforeend',`<button type="button" class="chip clr" id="lib-clr">Filtros activos (${n}) · quitar ✕</button>`)}
+  document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('on',b.dataset.v===prefs.view));$('view-note').textContent=VDESC[prefs.view]||'';
   $('lib-sort').value=prefs.sort;$('lib-dir').textContent=prefs.dir===1?'↑':'↓';
   const a=filtered(),v=prefs.view,body=$('lib-body');
   if(v==='shelf'){renderShelf(a);return}
   if(!a.length){
     body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>${sets.length?'Ningún set con estos filtros.':'Aún no hay sets. Añade el primero.'}</div></div>`;return}
-  if(v==='grid-s'||v==='grid-l')
-    body.innerHTML=`<div class="grid ${v==='grid-s'?'s':'l'}">${a.map(s=>`<button class="gi" data-id="${s.id}">${phHTML(s,false,true)}<b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')}${v==='grid-l'?' · '+num(s.pieces)+' pzs':''}</span>${v==='grid-l'?badges(s):''}</button>`).join('')}</div>`;
-  else
-    body.innerHTML=`<div class="list">${a.map(s=>`<button class="it ${v==='list'?'noimg':''}" data-id="${s.id}">${phHTML(s)}<div class="tx"><b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')} · ${esc(s.theme||'—')} · ${s.year||'—'} · ${num(s.pieces)} pzs</span><span>${STATUS[s.status]||''} ${badges(s)}${s.paid!=null?' · '+money(s.paid):''}</span></div></button>`).join('')}</div>`;
+  const items=l=>(v==='grid-s'||v==='grid-l')?
+    `<div class="grid ${v==='grid-s'?'s':'l'}">${l.map(s=>`<button class="gi" data-id="${s.id}">${phHTML(s,false,true)}<b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')}${v==='grid-l'?' · '+num(s.pieces)+' pzs':''}</span>${v==='grid-l'?badges(s):''}</button>`).join('')}</div>`:
+    `<div class="list">${l.map(s=>`<button class="it ${v==='list'?'noimg':''}" data-id="${s.id}">${phHTML(s)}<div class="tx"><b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')} · ${esc(s.theme||'—')} · ${s.year||'—'} · ${num(s.pieces)} pzs</span><span>${STATUS[s.status]||''} ${badges(s)}${s.paid!=null?' · '+money(s.paid):''}</span></div></button>`).join('')}</div>`;
+  if(prefs.sort==='theme'){
+    const g=new Map();a.forEach(s=>{const k=s.theme||'';if(!g.has(k))g.set(k,[]);g.get(k).push(s)});
+    body.innerHTML=[...g].map(([k,l])=>{const im=l.map(s=>s.photo||s.imageUrl).find(Boolean);
+      return `<div class="thh"><span class="tha">${im?`<img src="${esc(im)}" alt="" referrerpolicy="no-referrer" data-hide="1">`:''}</span><b>${esc(k||'Sin tema')}</b><span class="chip">${l.length} set${l.length===1?'':'s'} · ${num(l.reduce((n,s)=>n+(s.pieces||0),0))} pzs</span></div>`+items(l)}).join('');
+  }else body.innerHTML=items(a);
 }
-document.addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b&&(b.closest('#lib-body')||b.closest('#recent'))){const s=sets.find(x=>x.id===b.dataset.id);if(s)openSheet(s)}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b&&(b.closest('#lib-body')||b.closest('#recent')||b.closest('#wish-body'))){const s=sets.find(x=>x.id===b.dataset.id);if(s)openSheet(s)}});
 $('lib-q').addEventListener('input',renderLib);
 $('lib-sort').addEventListener('change',e=>{prefs.sort=e.target.value;savePrefs();renderLib()});
 $('lib-dir').addEventListener('click',()=>{prefs.dir*=-1;savePrefs();renderLib()});
 $('views').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;prefs.view=b.dataset.v;savePrefs();renderLib()});
 
+const ALL_THEMES=['Architecture','Art','Botanicals','BrickHeadz','City','Classic','Creator 3-in-1','DC','Disney','Dots','Duplo','Friends','Harry Potter','Icons','Ideas','Jurassic World','Lord of the Rings','Marvel','Minecraft','Minifigures','Monkie Kid','Ninjago','Speed Champions','Star Wars','Super Mario','Technic','Trains','Space','Modular Buildings','Sonic the Hedgehog','Avatar','Wicked','Formula 1','Animal Crossing','Pirates','Castle','Town','Racers','Bionicle','Hidden Side','Vidiyo','Overwatch','Stranger Things','Wednesday','The Legend of Zelda','Rivals','Gabby\'s Dollhouse','Education','Powered Up','Mindstorms','Batman','Bluey','Braille Bricks','DREAMZzz','Duplo Peppa Pig','Editions','Fortnite','KPop Demon Hunters','One Piece','Pokémon','Shrek','Looney Tunes','Nike x LEGO','Serious Play'];
 let fKey='';
 function filterOptions(){
   const u=a=>[...new Set(a.filter(x=>x!=null&&x!=='').map(String))];
@@ -183,7 +202,7 @@ function filterOptions(){
   const key=JSON.stringify([th,yr,st]);if(key===fKey)return;fKey=key;
   const opt=(a,sel)=>'<option value="">Todos</option>'+a.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
   $('x-theme').innerHTML=opt(th);$('x-year').innerHTML=opt(yr);$('x-store').innerHTML=opt(st);fillFilters();
-  $('dl-theme').innerHTML=th.map(x=>`<option value="${esc(x)}">`).join('');
+  $('dl-theme').innerHTML=[...new Set([...th,...ALL_THEMES])].sort((x,y)=>x.localeCompare(y,'es')).map(x=>`<option value="${esc(x)}">`).join('');
 }
 const CH={
   store:{sel:'f-store',oth:'f-store-other',defs:['LEGO Store','Amazon','El Corte Inglés','Carrefour','Juguettos','Smyths','Wallapop'],field:'store',lab:'Elige tienda',sk:null},
@@ -212,19 +231,24 @@ $('x-clear').addEventListener('click',()=>{prefs.f={};savePrefs();fillFilters();
 
 /* ---------- formulario de set (se construye una vez, nunca se rehace con la sincronización) ---------- */
 let editing=null,pickResults=[];
-const F=['q','num','year','name','theme','pieces','mini','rrp','paid','date','img','sale','sdate','notes'];
+const F=['q','num','year','name','theme','pieces','mini','rrp','paid','date','img','sale','sdate','notes','pot'];
+function potUI(){const st=document.querySelector('#f-status button.on')?.dataset.s;$('f-potbox').classList.toggle('hidden',!($('f-resale').checked&&st!=='sold'))}
 function setStatusUI(s){
   document.querySelectorAll('#f-status button').forEach(b=>b.classList.toggle('on',b.dataset.s===s));
-  $('c-built').classList.toggle('hidden',s!=='owned');$('c-building').classList.toggle('hidden',s!=='owned');$('f-soldbox').classList.toggle('hidden',s!=='sold');calc();
+  $('c-built').classList.toggle('hidden',s!=='owned');$('c-building').classList.toggle('hidden',s!=='owned');$('f-soldbox').classList.toggle('hidden',s!=='sold');potUI();calc();
 }
 const curStatus=()=>document.querySelector('#f-status button.on')?.dataset.s||'owned';
 $('f-status').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setStatusUI(b.dataset.s)});
 function calc(){
   const r=parseNum($('f-rrp').value),p=parseNum($('f-paid').value),s=parseNum($('f-sale').value);
-  $('f-save').textContent=r&&p!=null?(p<=r?`Ahorro: ${(((r-p)/r)*100).toFixed(1).replace('.',',')} % (${money(r-p)})`:'Pagado por encima del PVP'):'';
-  $('f-profit').textContent=s!=null&&p!=null?`Beneficio: ${money(s-p)}`:'';
+  const sv=$('f-save'),pf=$('f-profit'),pt=$('f-potnote'),pot=parseNum($('f-pot').value),base=p!=null?p:r;
+  if(pot!=null&&base){const b=pot-base,pc=(b/base*100).toFixed(1).replace('.',',');pt.textContent=`${b>=0?'Beneficio previsto: +':'Pérdida prevista: '}${money(Math.abs(b))} (${b>=0?'+':'−'}${pc.replace('-','')} %)${p==null?' · sobre el PVP':''}`;pt.classList.toggle('up',b>=0);pt.classList.toggle('down',b<0)}else{pt.textContent='';pt.classList.remove('up','down')}
+  sv.textContent=r&&p!=null?(p<=r?`Ahorro: ${(((r-p)/r)*100).toFixed(1).replace('.',',')} % (${money(r-p)})`:`Sobre el PVP: +${(((p-r)/r)*100).toFixed(1).replace('.',',')} % (${money(p-r)})`):'';
+  sv.classList.toggle('up',!!(r&&p!=null&&p<=r));sv.classList.toggle('down',!!(r&&p!=null&&p>r));
+  pf.textContent=s!=null&&p!=null?(s-p>=0?`Beneficio: ${money(s-p)}`:`Pérdida: ${money(p-s)}`):'';
+  pf.classList.toggle('up',s!=null&&p!=null&&s-p>=0);pf.classList.toggle('down',s!=null&&p!=null&&s-p<0);
 }
-['f-rrp','f-paid','f-sale'].forEach(i=>$(i).addEventListener('input',calc));
+['f-rrp','f-paid','f-sale','f-pot'].forEach(i=>$(i).addEventListener('input',calc));
 function preview(){const u=$('f-img').value.trim();$('f-ph').innerHTML=/^https?:\/\//i.test(u)?`<img src="${esc(u)}" alt="" referrerpolicy="no-referrer" data-hide="1">`:''}
 $('f-img').addEventListener('input',preview);
 let pendingPhoto='';
@@ -232,29 +256,29 @@ function photoUI(){$('f-myph').innerHTML=pendingPhoto?`<img src="${pendingPhoto}
 function shrink(file,max,q){return new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',q))};im.onerror=rej;im.src=rd.result};rd.onerror=rej;rd.readAsDataURL(file)})}
 ['ph-cam','ph-gal'].forEach(id=>$(id).addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{pendingPhoto=await shrink(f,640,.65);photoUI()}catch{$('f-err').textContent='No se pudo leer la foto.'}}));
 $('ph-take').addEventListener('click',()=>$('ph-cam').click());$('ph-pick').addEventListener('click',()=>$('ph-gal').click());$('ph-del').addEventListener('click',()=>{pendingPhoto='';photoUI()});
-function openSheet(s){
+function openSheet(s,st0){
   editing=s?s.id:null;pickResults=[];$('f-res').innerHTML='';$('f-msg').textContent='';$('f-err').textContent='';
   F.forEach(k=>$('f-'+k).value='');setChoice(CH.store,s?s.store:'');setChoice(CH.where,s?s.location:'');pendingPhoto=s?(s.photo||''):'';photoUI();
   $('sh-title').textContent=s?'Editar set':'Añadir set';$('f-del').classList.toggle('hidden',!s);$('f-del').textContent='Borrar';
   $('f-built').checked=false;$('f-building').checked=false;$('f-gift').checked=false;$('f-resale').checked=false;$('f-used').checked=false;
   if(s){
-    const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
-    Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid'||k==='sale')?String(v).replace('.',','):String(v)});
+    const m={pot:s.potPrice,num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,img:s.imageUrl,sale:s.salePrice,sdate:s.saleDate,notes:s.notes};
+    Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid'||k==='sale'||k==='pot')?String(v).replace('.',','):String(v)});
     $('f-built').checked=!!s.built;$('f-building').checked=!!s.building&&!s.built;$('f-gift').checked=!!s.gift;$('f-resale').checked=!!s.resale;$('f-used').checked=!!s.used;setStatusUI(s.status||'owned');
-  }else setStatusUI('owned');
-  instrLink();preview();calc();$('sheet').classList.remove('hidden');$('sheet').querySelector('.panel').scrollTop=0;
+  }else setStatusUI(st0||'owned');
+  instrLink();$('f-parts').classList.toggle('hidden',!s);$('f-dup').classList.toggle('hidden',!s);preview();calc();$('sheet').classList.remove('hidden');$('sheet').querySelector('.panel').scrollTop=0;
 }
 $('sheet').addEventListener('click',e=>{if(e.target===$('sheet'))closeSheet()});$('filters').addEventListener('click',e=>{if(e.target===$('filters'))$('filters').classList.add('hidden')});
 function closeSheet(){stopScan();$('sheet').classList.add('hidden');editing=null}
-$('f-cancel').addEventListener('click',closeSheet);$('sh-x').addEventListener('click',closeSheet);$('x-x').addEventListener('click',()=>$('filters').classList.add('hidden'));$('fab').addEventListener('click',()=>openSheet(null));
+$('f-cancel').addEventListener('click',closeSheet);$('sh-x').addEventListener('click',closeSheet);$('x-x').addEventListener('click',()=>$('filters').classList.add('hidden'));$('fab').addEventListener('click',()=>openSheet(null,curTab==='wish'?'wishlist':undefined));
 $('f-ok').addEventListener('click',async()=>{
   const g=k=>$('f-'+k).value.trim(),n=k=>parseNum($('f-'+k).value);
   if(!g('name')&&!g('num')){$('f-err').textContent='Escribe el número o el nombre del set.';return}
-  for(const k of ['year','pieces','mini','rrp','paid','sale']){if(g(k)&&n(k)==null){$('f-err').textContent='Revisa los números.';return}}
+  for(const k of ['year','pieces','mini','rrp','paid','sale','pot']){if(g(k)&&n(k)==null){$('f-err').textContent='Revisa los números.';return}}
   const st=curStatus();
   const data={addedBy:user.uid,setNumber:g('num'),name:g('name'),theme:g('theme'),year:n('year'),pieces:n('pieces'),minifigs:n('mini'),rrp:n('rrp'),paid:n('paid'),
     store:choiceVal(CH.store),purchaseDate:g('date'),location:choiceVal(CH.where),photo:pendingPhoto,notes:g('notes'),imageUrl:g('img'),status:st,built:st==='owned'&&$('f-built').checked,building:st==='owned'&&$('f-building').checked&&!$('f-built').checked,
-    gift:$('f-gift').checked,resale:$('f-resale').checked,used:$('f-used').checked,salePrice:st==='sold'?n('sale'):null,saleDate:st==='sold'?g('sdate'):'',updatedAt:fb.serverTimestamp()};
+    gift:$('f-gift').checked,resale:$('f-resale').checked,used:$('f-used').checked,salePrice:st==='sold'?n('sale'):null,potPrice:$('f-resale').checked&&st!=='sold'?n('pot'):null,saleDate:st==='sold'?g('sdate'):'',updatedAt:fb.serverTimestamp()};
   try{
     if(editing)await fb.setDoc(fb.doc(db,'bricks',editing),data,{merge:true});
     else{data.createdAt=fb.serverTimestamp();await fb.setDoc(fb.doc(fb.collection(db,'bricks')),data)}
@@ -436,3 +460,98 @@ $('f-num').addEventListener('input',instrLink);
 
 $('f-built').addEventListener('change',()=>{if($('f-built').checked)$('f-building').checked=false});
 $('f-building').addEventListener('change',()=>{if($('f-building').checked)$('f-built').checked=false});
+
+/* ---------- inventario de piezas (Rebrickable, guardado en este dispositivo) ---------- */
+const PT={scope:'owned',theme:'',set:'',sort:'qty',q:'',lim:150,busy:false,stop:false,cache:null};
+const snKey=s=>{const n=(s.setNumber||'').trim();return n?(n.includes('-')?n:n+'-1'):''};
+const idb=()=>new Promise((res,rej)=>{try{const q=indexedDB.open('bricks-parts',1);q.onupgradeneeded=()=>q.result.createObjectStore('p');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}});
+async function ptLoad(){if(PT.cache)return PT.cache;PT.cache=new Map();
+  try{const d=await idb();await new Promise(res=>{const st=d.transaction('p').objectStore('p'),q=st.openCursor();q.onsuccess=()=>{const c=q.result;if(c){PT.cache.set(c.key,c.value);c.continue()}else res()};q.onerror=()=>res()})}catch{}
+  return PT.cache}
+async function ptSave(k,v){PT.cache.set(k,v);try{const d=await idb();d.transaction('p','readwrite').objectStore('p').put(v,k)}catch{}}
+function ptSets(){const sc=PT.scope;return sets.filter(s=>snKey(s)&&(sc==='all'||(sc==='owned'&&s.status==='owned')||(sc==='built'&&s.status==='owned'&&s.built)||(sc==='unbuilt'&&s.status==='owned'&&!s.built&&!s.building)||(sc==='building'&&s.status==='owned'&&s.building&&!s.built)||(sc==='wish'&&s.status==='wishlist'))&&(!PT.theme||s.theme===PT.theme)&&(!PT.set||s.id===PT.set))}
+async function ptFetch(sn,key){
+  let path=`/lego/sets/${sn}/parts/?page_size=1000&inc_color_details=1`,out=[];
+  for(let n=0;path&&n<10;n++){let j;
+    try{j=await rbGet(path,key)}catch(e){if(e.status===429){await sleep(6000);j=await rbGet(path,key)}else throw e}
+    for(const x of j.results||[]){if(x.is_spare)continue;out.push([x.part?.part_num||'',x.part?.name||'',x.color?.id??0,x.color?.name||'',x.color?.rgb||'',x.quantity||0,x.part?.part_img_url||''])}
+    path=j.next?String(j.next).replace(/^https:\/\/rebrickable\.com\/api\/v3/,''):''}
+  return out}
+function ptSelects(){
+  const th=[...new Set(sets.map(s=>s.theme).filter(Boolean))].sort((x,y)=>x.localeCompare(y,'es'));
+  const so=[...sets].filter(s=>snKey(s)).sort((x,y)=>(x.name||'').localeCompare(y.name||'','es'));
+  const k=JSON.stringify([th,so.map(s=>s.id)]);
+  if(ptSelects.k!==k){ptSelects.k=k;
+    $('pt-theme').innerHTML='<option value="">Todas las colecciones</option>'+th.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+    $('pt-set').innerHTML='<option value="">Todos los sets</option>'+so.map(s=>`<option value="${esc(s.id)}">${esc(s.setNumber)} ${esc(s.name||'')}</option>`).join('')}
+  $('pt-scope').value=PT.scope;$('pt-theme').value=PT.theme;$('pt-set').value=PT.set;$('pt-sort').value=PT.sort}
+async function renderParts(){
+  await ptLoad();ptSelects();
+  const ss=ptSets(),have=ss.filter(s=>PT.cache.has(snKey(s))),miss=ss.length-have.length;
+  const agg=new Map();
+  for(const s of have){for(const p of PT.cache.get(snKey(s)).p){const k=p[0]+'|'+p[2],o=agg.get(k)||{ref:p[0],name:p[1],cid:p[2],col:p[3],rgb:p[4],img:p[6],q:0};o.q+=p[5];agg.set(k,o)}}
+  let rows=[...agg.values()];const q=PT.q.trim().toLowerCase();
+  if(q)rows=rows.filter(o=>`${o.ref} ${o.name} ${o.col}`.toLowerCase().includes(q));
+  rows.sort((x,y)=>PT.sort==='ref'?x.ref.localeCompare(y.ref,'es',{numeric:true}):PT.sort==='col'?(x.col.localeCompare(y.col,'es')||y.q-x.q):y.q-x.q);
+  const tot=rows.reduce((n,o)=>n+o.q,0);
+  $('pt-stat').innerHTML=`<span class="chip">${ss.length} set${ss.length===1?'':'s'}</span><span class="chip">${have.length} con piezas</span>${miss?`<span class="chip warn">${miss} sin cargar</span>`:''}<span class="chip">${num(rows.length)} tipos</span><span class="chip">${num(tot)} piezas</span>`;
+  $('pt-load').textContent=PT.busy?'Parar':miss?`Cargar piezas (${miss})`:'Actualizar piezas';
+  const vis=rows.slice(0,PT.lim);
+  $('pt-list').innerHTML=!ss.length?'<div class="empty">No hay sets con este filtro.</div>':!rows.length?`<div class="empty">${miss?'Pulsa «Cargar piezas» para traer el inventario de estos sets.':'Sin resultados.'}</div>`:
+    vis.map(o=>`<div class="prow"><span class="pimg">${o.img?`<img src="${esc(o.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide="1">`:''}</span><div class="pt"><b>${esc(o.ref)}</b> ${esc(o.name)}<div class="pcol"><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(o.rgb)?'#'+o.rgb:'#ddd'}"></i>${esc(o.col)}</div></div><b class="pq">×${num(o.q)}</b></div>`).join('')+(rows.length>vis.length?`<button class="btn sec small" id="pt-more" style="margin:10px auto;display:block">Mostrar más (${rows.length-vis.length})</button>`:'');
+}
+async function ptRun(){
+  if(PT.busy){PT.stop=true;return}
+  const rb=keys().rb;if(!rb){$('pt-msg').textContent='Falta la clave de Rebrickable (Ajustes, Avanzado).';return}
+  await ptLoad();const todo=ptSets().filter(s=>!PT.cache.has(snKey(s)));
+  const again=!todo.length?ptSets():todo,seen=new Set();let n=0,fail=0;PT.busy=true;PT.stop=false;$('pt-msg').textContent='';
+  for(const s of again){const k=snKey(s);if(seen.has(k))continue;seen.add(k);if(PT.stop)break;n++;
+    $('pt-msg').textContent=`Cargando ${n} de ${new Set(again.map(snKey)).size}: ${s.name||k}`;renderParts();
+    try{await ptSave(k,{t:Date.now(),p:await ptFetch(k,rb)})}
+    catch(e){if(e.status===404)await ptSave(k,{t:Date.now(),p:[],na:1});else if(e.status===401){$('pt-msg').textContent='La clave de Rebrickable no es válida.';PT.busy=false;renderParts();return}else fail++}}
+  PT.busy=false;$('pt-msg').textContent=(PT.stop?'Parado. ':'Listo. ')+(fail?`${fail} set${fail===1?'':'s'} no se pudieron cargar; inténtalo de nuevo.`:'');renderParts();
+}
+$('pt-scope').addEventListener('change',e=>{PT.scope=e.target.value;PT.lim=150;renderParts()});
+$('pt-theme').addEventListener('change',e=>{PT.theme=e.target.value;PT.lim=150;renderParts()});
+$('pt-set').addEventListener('change',e=>{PT.set=e.target.value;PT.lim=150;renderParts()});
+$('pt-sort').addEventListener('change',e=>{PT.sort=e.target.value;renderParts()});
+$('pt-q').addEventListener('input',e=>{PT.q=e.target.value;PT.lim=150;renderParts()});
+$('pt-load').addEventListener('click',ptRun);
+$('pt-list').addEventListener('click',e=>{if(e.target.id==='pt-more'){PT.lim+=150;renderParts()}});
+$('f-parts').addEventListener('click',()=>{const id=editing;closeSheet();PT.set=id;PT.scope='all';PT.theme='';PT.q='';go('parts')});
+
+$('f-resale').addEventListener('change',()=>{potUI();calc()});
+
+/* ---------- lista de deseos ---------- */
+const WS={q:'',sort:'name'};
+function renderWish(){
+  const all=sets.filter(s=>s.status==='wishlist'),q=WS.q.trim().toLowerCase();
+  let a=all.filter(s=>!q||`${s.name||''} ${s.setNumber||''} ${s.theme||''}`.toLowerCase().includes(q));
+  const k=WS.sort,val=s=>k==='theme'?(s.theme||null):k==='year'?s.year:k==='pieces'?s.pieces:k==='rrp'?s.rrp:k==='new'?-(s.createdAt?.seconds||0):(s.name||'');
+  a.sort((x,y)=>{const A=val(x),B=val(y);if(A==null&&B==null)return 0;if(A==null)return 1;if(B==null)return -1;return typeof A==='string'?A.localeCompare(B,'es'):A-B});
+  const sum=f=>all.reduce((n,s)=>n+(f(s)||0),0);
+  $('wish-tot').innerHTML=`<span class="chip">${all.length} deseado${all.length===1?'':'s'}</span><span class="chip">${num(sum(s=>s.pieces))} piezas</span><span class="chip">PVP total ${money(sum(s=>s.rrp))}</span>`;
+  $('wish-body').innerHTML=!a.length?`<div class="empty">${artSvg(aspecto,'')}<div>${all.length?'Ningún deseo con esta búsqueda.':'Tu lista de deseos está vacía. Pulsa + para añadir un set que quieras.'}</div></div>`:
+    `<div class="list">${a.map(s=>`<div class="wrow"><button class="it" data-id="${s.id}">${phHTML(s)}<div class="tx"><b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')} · ${esc(s.theme||'—')} · ${s.year||'—'} · ${num(s.pieces)} pzs</span><span>PVP ${money(s.rrp)} ${s.gift?'<span class="badge">Regalo</span>':''}${s.resale?'<span class="badge">Scalper</span>':''}${potTxt(s)}</span></div></button><button class="btn sec small" data-own="${s.id}">Ya lo tengo</button></div>`).join('')}</div>`;
+}
+$('wish-q').addEventListener('input',e=>{WS.q=e.target.value;renderWish()});
+$('wish-sort').addEventListener('change',e=>{WS.sort=e.target.value;renderWish()});
+$('wish-body').addEventListener('click',async e=>{const b=e.target.closest('[data-own]');if(!b)return;
+  try{await fb.setDoc(fb.doc(db,'bricks',b.dataset.own),{status:'owned',updatedAt:fb.serverTimestamp()},{merge:true});toast('Pasado a tu colección')}catch{toast('No se pudo guardar')}});
+
+/* ---------- tarjetas de portada: abren la vista filtrada ---------- */
+function goFilter(f){prefs.f=f;prefs.view=prefs.view==='shelf'?'listimg':prefs.view;$('lib-q').value='';savePrefs();go('lib')}
+$('tiles').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const g=b.dataset.go;
+  if(g==='wish')return go('wish');
+  goFilter(g==='mont'?{coll:true,built:'1'}:g==='por'?{coll:true,built:'0'}:g==='reg'?{status:'owned',gift:true}:g==='sc'?{status:'owned',resale:true}:{status:'sold'})});
+document.addEventListener('click',e=>{if(e.target.closest('#lib-clr')){prefs.f={};savePrefs();fillFilters();renderLib()}});
+const VDESC={list:'Lista: sin fotos, con todos los datos.',listimg:'Lista con foto: foto pequeña y todos los datos.',
+ 'grid-s':'Mosaico: fotos pequeñas con nombre, número y piezas. Poca información.','grid-l':'Cuadrícula: fotos grandes con piezas, estado y precios.',shelf:'Estantería: solo sets montados, por lugar. Vista limpia.'};
+
+/* ---------- duplicar un set ---------- */
+$('f-dup').addEventListener('click',()=>{const s=sets.find(x=>x.id===editing);if(!s)return;
+  closeSheet();openSheet(null,'owned');
+  const m={num:s.setNumber,year:s.year,name:s.name,theme:s.theme,pieces:s.pieces,mini:s.minifigs,rrp:s.rrp,paid:s.paid,date:s.purchaseDate,img:s.imageUrl};
+  Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid')?String(v).replace('.',','):String(v)});
+  setChoice(CH.store,s.store);setChoice(CH.where,s.location);instrLink();preview();calc();
+  $('sh-title').textContent='Copia de '+(s.name||s.setNumber||'set');toast('Copia creada: ajusta lo que cambie y guarda');});

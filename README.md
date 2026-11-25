@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.7.0
+Version: 1.12.0
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.7.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.12.0", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -19,7 +19,7 @@ Date: 25 November 2026
 
 ## Data
 Sets live in the collection "bricks". Every set carries addedBy (the signed in user's uid). Profile and shared settings live in "bricksMeta", so "bricks" holds only sets.
-- Sets: setNumber, name, theme, year, pieces, minifigs, rrp (PVP), paid, store, purchaseDate, location, notes, imageUrl (web address only), photo (small JPEG of your own set, optional), status ("wishlist", "owned" or "sold"), built (boolean), building (boolean, being built now), gift (boolean), resale (boolean), used (boolean, second hand), salePrice, saleDate
+- Sets: setNumber, name, theme, year, pieces, minifigs, rrp (PVP), paid, store, purchaseDate, location, notes, imageUrl (web address only), photo (small JPEG of your own set, optional), status ("wishlist", "owned" or "sold"), built (boolean), building (boolean, being built now), gift (boolean), resale (boolean), potPrice (planned selling price), used (boolean, second hand), salePrice, saleDate
 - bricksMeta/<uid>: name, insidersNumber, cardImage (small JPEG), aspecto
 - bricksMeta/config: bricksetKey, rebrickableKey (shared settings, written from the owner account)
 
@@ -31,6 +31,20 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.12.0 (2026-11-25): "Duplicar este set" button (copies the data, starts unbuilt and not for gift or scalper) and a ×N copies label when you own the same set more than once.
+
+1.11.1 (2026-11-25): gift box icon for sets marked Para regalar (top left of the picture in the grids, and inside the Regalo label).
+
+1.11.0 (2026-11-25): view buttons carry a name and a note says what each view shows; home cards for Vendidos and Deseos; every home card opens the matching filtered view, with a chip to clear the filter.
+
+1.10.0 (2026-11-25): new Deseos tab. Wanted sets live there and no longer appear in Biblioteca, the home strip or its filters. "Ya lo tengo" moves one into your collection.
+
+1.9.0 (2026-11-25): Scalper sets get a planned selling price with the expected profit and percentage, in the sheet, the library and the home totals.
+
+1.8.1 (2026-11-25): theme suggestions checked against the LEGO.com themes page; 14 current themes added.
+
+1.8.0 (2026-11-25): sort by Tema with theme headers and a picture; saving % in green or over PVP in red, and profit or loss for sold sets; list of LEGO themes in the form; new Piezas tab with the full parts inventory from Rebrickable (kept on this device), filtered by built, unbuilt, in process, wanted, collection or set.
+
 1.7.0 (2026-11-25): "Montado" badge in green, new red "Por montar" badge, red box icon; the lookup says when the source has no PVP.
 
 1.6.0 (2026-11-25): "Mostrar tarjeta" now draws a digital member card (your sign in email and a Code 128 barcode made from your number) with no photo needed. The photo, if saved, shows under it.
