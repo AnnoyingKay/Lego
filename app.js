@@ -1,7 +1,7 @@
 import {firebaseConfig} from './firebase-config.js';
 import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
 
-const VERSION='1.6.0', VERSION_DATE='2026-11-25';
+const VERSION='1.7.0', VERSION_DATE='2026-11-25';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -155,7 +155,7 @@ function filtered(){
     if(an&&bn)return 0;if(an)return 1;if(bn)return -1;return (typeof A==='string'?A.localeCompare(B,'es'):A-B)*d});
   return a;
 }
-function badges(s){return (s.built&&s.status==='owned'?'<span class="badge">Montado</span>':'')+(s.building&&!s.built&&s.status==='owned'?'<span class="badge prog">En proceso</span>':'')+(s.gift?'<span class="badge">Regalo</span>':'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
+function badges(s){return (s.built&&s.status==='owned'?'<span class="badge ok">Montado</span>':'')+(s.status==='owned'&&!s.built&&!s.building?'<span class="badge un">Por montar</span>':'')+(s.building&&!s.built&&s.status==='owned'?'<span class="badge prog">En proceso</span>':'')+(s.gift?'<span class="badge">Regalo</span>':'')+(s.resale?'<span class="badge">Scalper</span>':'')+(s.used?'<span class="badge">Segunda mano</span>':'')}
 function renderLib(){
   const c=sets.filter(coll);
   $('lib-tot').innerHTML=`<span class="chip">${c.length} sets</span><span class="chip">${num(c.reduce((n,s)=>n+(s.pieces||0),0))} piezas</span><span class="chip">${c.filter(s=>s.built).length} montado${c.filter(s=>s.built).length===1?'':'s'}</span><span class="chip">${c.filter(s=>!s.built&&!s.building).length} en caja</span>${c.some(s=>s.building&&!s.built)?`<span class="chip">${c.filter(s=>s.building&&!s.built).length} en proceso</span>`:''}`;
@@ -317,7 +317,7 @@ function fillFrom(r){
 }
 async function pick(r){
   $('f-res').innerHTML='';$('f-msg').textContent='Rellenando…';
-  r=await enrich({...r},keys().rb);fillFrom(r);$('f-msg').textContent='Datos rellenados. Revísalos antes de guardar.';
+  r=await enrich({...r},keys().rb);fillFrom(r);$('f-msg').textContent=r.rrp==null?'Datos rellenados. Este set no tiene PVP en la fuente: escríbelo a mano.':'Datos rellenados. Revísalos antes de guardar.';
 }
 async function search(){
   const q=$('f-q').value.trim();if(!q){$('f-msg').textContent='Escribe un número, un nombre o escanea el código.';return}
