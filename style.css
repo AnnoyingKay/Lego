@@ -131,4 +131,6 @@ details.adv .box{background:#fff;border:1px solid var(--line);border-top:0;borde
 .ov.tr{top:4px;right:4px}.ov.bc{bottom:4px;left:50%;transform:translateX(-50%);white-space:nowrap}
 .ph:has(.ov):before{z-index:0}
 
-.ov.box{padding:4px;display:flex;border-radius:8px}.ov.box svg{display:block}
+.ov.box{padding:6px;display:flex;border-radius:8px}.ov.box svg{display:block}
+
+.ov.box svg{width:24px;height:24px}

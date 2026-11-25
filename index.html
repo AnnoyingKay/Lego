@@ -59,7 +59,7 @@
     </div>
     <div class="tools">
       <select id="lib-sort" aria-label="Ordenar por">
-        <option value="name">Nombre</option><option value="num">Número de set</option><option value="year">Año</option><option value="pieces">Piezas</option><option value="paid">Precio pagado</option>
+        <option value="name">Nombre</option><option value="num">Número de set</option><option value="state">Estado</option><option value="year">Año</option><option value="pieces">Piezas</option><option value="paid">Precio pagado</option>
       </select>
       <button class="btn sec small" id="lib-dir" aria-label="Cambiar orden">A→Z</button>
       <div class="views" id="views">
@@ -189,6 +189,7 @@
   <label class="chk" id="c-built"><input type="checkbox" id="f-built">Montado</label>
   <label class="chk"><input type="checkbox" id="f-gift">Para regalar</label>
   <label class="chk"><input type="checkbox" id="f-resale">Scalper</label>
+  <label class="chk"><input type="checkbox" id="f-used">Segunda mano</label>
   <div id="f-soldbox" class="hidden">
     <div class="grid2">
       <div><label class="f" for="f-sale">Precio de venta (€)</label><input type="text" id="f-sale" inputmode="decimal" autocomplete="off"></div>
@@ -197,6 +198,7 @@
     <div class="note" id="f-profit"></div>
   </div>
 
+  <a id="f-instr" class="btn sec small hidden" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;margin-top:12px;text-decoration:none">Ver manual de instrucciones (LEGO)</a>
   <label class="f" for="f-notes">Notas</label>
   <textarea id="f-notes"></textarea>
   <div class="err" id="f-err"></div>
@@ -218,6 +220,7 @@
   <select id="x-built"><option value="">Todos</option><option value="1">Montados</option><option value="0">Por montar</option></select>
   <label class="chk"><input type="checkbox" id="x-gift">Solo para regalar</label>
   <label class="chk"><input type="checkbox" id="x-resale">Solo scalper</label>
+  <label class="chk"><input type="checkbox" id="x-used">Solo segunda mano</label>
   <div class="row" style="margin-top:12px"><button class="btn" id="x-ok">Aplicar</button><button class="btn sec" id="x-clear">Quitar filtros</button></div>
 </div></div>
 
