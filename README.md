@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.13.0
+Version: 1.14.0
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.13.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.14.0", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -31,6 +31,8 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.14.0 (2026-11-26): Creación tab: import a Studio .io, Rebrickable CSV/TSV or BrickLink XML and see what % you can build with your parts (same colour and any colour), what to buy and which sets the pieces come from; sets you do not want to dismount can be left out (moc.js, colors.js: colour equivalences built in, no Rebrickable key needed).
+
 1.13.0 (2026-11-26): own icons for theme headers (themeicons.js); red heart on wishlist sets; Piezas renamed Cajón with list, grid and by set views plus a part reference search; phone, tablet and computer layouts with a manual choice in Ajustes.
 
 1.12.1 (2026-11-25): the gift box icon sits top right, next to the unbuilt box icon.

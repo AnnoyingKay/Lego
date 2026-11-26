@@ -209,3 +209,17 @@ button.tile{border:0;text-align:left;font:inherit;color:inherit;cursor:pointer;w
 [data-layout=tablet] #fab{right:max(12px,calc((100vw - 900px)/2 + 12px))}[data-layout=desktop] #fab{right:max(12px,calc((100vw - 1240px)/2 + 12px))}
 [data-layout=desktop] .shelfgrp{margin-left:14px;margin-right:14px}
 [data-layout=tablet] .wrow,[data-layout=desktop] .wrow{margin-bottom:0}
+
+/* --- Creación --- */
+.mcard{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.mch0{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:10px 12px;text-align:left;font:inherit;color:inherit}
+.mcb{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:5px}.mcb span{width:96px;flex:none;color:var(--mut)}.mcb b{width:40px;text-align:right;flex:none}
+.bar2{flex:1;height:8px;border-radius:99px;background:#eee;overflow:hidden}.bar2 i{display:block;height:100%;background:#2e9e5b;border-radius:99px}
+.mcbody{padding:4px 12px 12px;border-top:1px solid var(--line);background:var(--bg)}
+.mch{display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px;font-size:15px}
+.mcm{display:grid;padding:6px 0 0;grid-template-columns:repeat(2,minmax(0,1fr))}.mcm button{padding:10px 6px}
+.mcset{background:#fff;border:1px solid var(--line);border-radius:10px;margin:6px 0;padding:8px 10px}.mcset summary{cursor:pointer}
+.mcs{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}.mcs input{margin-top:3px;flex:none}
+.mcs small{color:var(--mut)}
+nav button{font-size:10px}
+[data-layout=tablet] .mcard,[data-layout=desktop] .mcard{max-width:900px}
