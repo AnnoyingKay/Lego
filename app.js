@@ -1,7 +1,8 @@
 import {firebaseConfig} from './firebase-config.js';
 import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
+import {themeIcon} from './themeicons.js';
 
-const VERSION='1.12.1', VERSION_DATE='2026-11-25';
+const VERSION='1.13.0', VERSION_DATE='2026-11-26';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -131,7 +132,7 @@ function renderHome(){
 const copiesN=s=>{if(s.status!=='owned')return 0;const n=(s.setNumber||'').trim().replace(/-1$/,'');return n?sets.filter(x=>x.status==='owned'&&(x.setNumber||'').trim().replace(/-1$/,'')===n).length:0};
 const GIFT='<svg viewBox="0 0 24 24" width="{S}" height="{S}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="3" y="9" width="18" height="4" rx="1"/><path d="M5 13v7h14v-7M12 9v11M12 9S9 8.500 8.500 6.500 10 4 12 9c2-5 3.500-4.500 3.500-2.500S12 9 12 9z"/></svg>';
 const phHTML=(s,photoFirst,ov)=>{const src=photoFirst?(s.photo||s.imageUrl):(s.imageUrl||s.photo),own=!!src&&src===s.photo;
-  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}<span class="ovs">${ov&&s.gift?`<span class="ov tl gift" role="img" aria-label="Para regalar" title="Para regalar">${GIFT.replace(/\{S\}/g,24)}</span>`:''}${ov&&s.status==='owned'&&!s.built?(s.building?'<span class="ov tr box prog" role="img" aria-label="En proceso" title="En proceso"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 11V8m5 3V8m5 3V8"/><path d="M5 5h14" stroke-dasharray="2 3"/></svg></span>':'<span class="ov tr box" role="img" aria-label="Por montar" title="Por montar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>'):''}</span>${ov&&s.pieces?`<span class="ov bc">${num(s.pieces)} pzs${copiesN(s)>1?' · ×'+copiesN(s):''}</span>`:''}</div>`};
+  return `<div class="ph sq">${src?`<img src="${esc(src)}" ${own?'class="cover" ':'loading="lazy" referrerpolicy="no-referrer" '}alt="" data-hide="1">`:''}<span class="ovs">${ov&&s.status==='wishlist'?'<span class="ov heart" role="img" aria-label="Deseado" title="Deseado"><svg viewBox="0 0 24 24" width="18" height="18" fill="#d11a2a" stroke="#d11a2a" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></span>':''}${ov&&s.gift?`<span class="ov tl gift" role="img" aria-label="Para regalar" title="Para regalar">${GIFT.replace(/\{S\}/g,24)}</span>`:''}${ov&&s.status==='owned'&&!s.built?(s.building?'<span class="ov tr box prog" role="img" aria-label="En proceso" title="En proceso"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 11V8m5 3V8m5 3V8"/><path d="M5 5h14" stroke-dasharray="2 3"/></svg></span>':'<span class="ov tr box" role="img" aria-label="Por montar" title="Por montar"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg></span>'):''}</span>${ov&&ov!=='h'&&s.pieces?`<span class="ov bc">${num(s.pieces)} pzs${copiesN(s)>1?' · ×'+copiesN(s):''}</span>`:''}</div>`};
 function renderShelf(a){
   const body=$('lib-body'),b=a.filter(s=>s.status==='owned'&&s.built);
   if(!b.length){body.innerHTML=`<div class="empty">${artSvg(aspecto,'')}<div>Aún no hay sets montados. Marca un set como Montado y aparecerá aquí.</div></div>`;return}
@@ -184,8 +185,7 @@ function renderLib(){
     `<div class="list">${l.map(s=>`<button class="it ${v==='list'?'noimg':''}" data-id="${s.id}">${phHTML(s)}<div class="tx"><b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')} · ${esc(s.theme||'—')} · ${s.year||'—'} · ${num(s.pieces)} pzs</span><span>${STATUS[s.status]||''} ${badges(s)}${s.paid!=null?' · '+money(s.paid):''}</span></div></button>`).join('')}</div>`;
   if(prefs.sort==='theme'){
     const g=new Map();a.forEach(s=>{const k=s.theme||'';if(!g.has(k))g.set(k,[]);g.get(k).push(s)});
-    body.innerHTML=[...g].map(([k,l])=>{const im=l.map(s=>s.photo||s.imageUrl).find(Boolean);
-      return `<div class="thh"><span class="tha">${im?`<img src="${esc(im)}" alt="" referrerpolicy="no-referrer" data-hide="1">`:''}</span><b>${esc(k||'Sin tema')}</b><span class="chip">${l.length} set${l.length===1?'':'s'} · ${num(l.reduce((n,s)=>n+(s.pieces||0),0))} pzs</span></div>`+items(l)}).join('');
+    body.innerHTML=[...g].map(([k,l])=>{return `<div class="thh">${themeIcon(k)}<b>${esc(k||'Sin tema')}</b><span class="chip">${l.length} set${l.length===1?'':'s'} · ${num(l.reduce((n,s)=>n+(s.pieces||0),0))} pzs</span></div>`+items(l)}).join('');
   }else body.innerHTML=items(a);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b&&(b.closest('#lib-body')||b.closest('#recent')||b.closest('#wish-body'))){const s=sets.find(x=>x.id===b.dataset.id);if(s)openSheet(s)}});
@@ -462,7 +462,7 @@ $('f-built').addEventListener('change',()=>{if($('f-built').checked)$('f-buildin
 $('f-building').addEventListener('change',()=>{if($('f-building').checked)$('f-built').checked=false});
 
 /* ---------- inventario de piezas (Rebrickable, guardado en este dispositivo) ---------- */
-const PT={scope:'owned',theme:'',set:'',sort:'qty',q:'',lim:150,busy:false,stop:false,cache:null};
+const PT={scope:'owned',theme:'',set:'',sort:'qty',q:'',ref:'',view:'list',open:new Set(),lim:150,busy:false,stop:false,cache:null};
 const snKey=s=>{const n=(s.setNumber||'').trim();return n?(n.includes('-')?n:n+'-1'):''};
 const idb=()=>new Promise((res,rej)=>{try{const q=indexedDB.open('bricks-parts',1);q.onupgradeneeded=()=>q.result.createObjectStore('p');q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)}catch(e){rej(e)}});
 async function ptLoad(){if(PT.cache)return PT.cache;PT.cache=new Map();
@@ -485,20 +485,43 @@ function ptSelects(){
     $('pt-theme').innerHTML='<option value="">Todas las colecciones</option>'+th.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
     $('pt-set').innerHTML='<option value="">Todos los sets</option>'+so.map(s=>`<option value="${esc(s.id)}">${esc(s.setNumber)} ${esc(s.name||'')}</option>`).join('')}
   $('pt-scope').value=PT.scope;$('pt-theme').value=PT.theme;$('pt-set').value=PT.set;$('pt-sort').value=PT.sort}
+const ptRow=o=>`<div class="prow"><span class="pimg">${o.img?`<img src="${esc(o.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide="1">`:''}</span><div class="pt"><b>${esc(o.ref)}</b> ${esc(o.name)}<div class="pcol"><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(o.rgb)?'#'+o.rgb:'#ddd'}"></i>${esc(o.col)}</div></div><b class="pq">×${num(o.q)}</b></div>`;
+const ptTile=o=>`<div class="ptile" title="${esc(o.ref+' '+o.name+' · '+o.col)}"><span class="pimg">${o.img?`<img src="${esc(o.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide="1">`:''}</span><b>×${num(o.q)}</b><small>${esc(o.ref)}</small><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(o.rgb)?'#'+o.rgb:'#ddd'}"></i></div>`;
+function ptSort(rows){return rows.sort((x,y)=>PT.sort==='ref'?x.ref.localeCompare(y.ref,'es',{numeric:true}):PT.sort==='col'?(x.col.localeCompare(y.col,'es')||y.q-x.q):y.q-x.q)}
+const ptObj=p=>({ref:p[0],name:p[1],cid:p[2],col:p[3],rgb:p[4],q:p[5],img:p[6]});
 async function renderParts(){
   await ptLoad();ptSelects();
-  const ss=ptSets(),have=ss.filter(s=>PT.cache.has(snKey(s))),miss=ss.length-have.length;
-  const agg=new Map();
-  for(const s of have){for(const p of PT.cache.get(snKey(s)).p){const k=p[0]+'|'+p[2],o=agg.get(k)||{ref:p[0],name:p[1],cid:p[2],col:p[3],rgb:p[4],img:p[6],q:0};o.q+=p[5];agg.set(k,o)}}
-  let rows=[...agg.values()];const q=PT.q.trim().toLowerCase();
-  if(q)rows=rows.filter(o=>`${o.ref} ${o.name} ${o.col}`.toLowerCase().includes(q));
-  rows.sort((x,y)=>PT.sort==='ref'?x.ref.localeCompare(y.ref,'es',{numeric:true}):PT.sort==='col'?(x.col.localeCompare(y.col,'es')||y.q-x.q):y.q-x.q);
-  const tot=rows.reduce((n,o)=>n+o.q,0);
-  $('pt-stat').innerHTML=`<span class="chip">${ss.length} set${ss.length===1?'':'s'}</span><span class="chip">${have.length} con piezas</span>${miss?`<span class="chip warn">${miss} sin cargar</span>`:''}<span class="chip">${num(rows.length)} tipos</span><span class="chip">${num(tot)} piezas</span>`;
+  const ss=ptSets(),have=ss.filter(s=>PT.cache.has(snKey(s))),miss=ss.length-have.length,q=PT.q.trim().toLowerCase();
+  document.querySelectorAll('#pt-views button').forEach(b=>b.classList.toggle('on',b.dataset.pv===PT.view));
+  const match=p=>!q||`${p[0]} ${p[1]} ${p[3]}`.toLowerCase().includes(q);
+  // buscador por referencia
+  const ref=PT.ref.trim().toLowerCase();
+  if(!ref)$('pt-ref-out').innerHTML='';
+  else{const hits=[];let name='',tot=0;const byCol=new Map();
+    for(const s of have){const rows=PT.cache.get(snKey(s)).p.filter(p=>String(p[0]).toLowerCase()===ref);if(rows.length){rows.forEach(p=>{name=name||p[1];tot+=p[5];byCol.set(p[3],(byCol.get(p[3])||0)+p[5])});hits.push([s,rows])}}
+    $('pt-ref-out').innerHTML=!hits.length?`<div class="refcard">No tienes la referencia <b>${esc(PT.ref.trim())}</b> en los sets cargados.${miss?` Hay ${miss} sin cargar.`:''}</div>`:
+      `<div class="refcard"><b>${esc(PT.ref.trim())}</b> · ${esc(name)}<div class="refbig">${num(tot)} pieza${tot===1?'':'s'} en ${hits.length} set${hits.length===1?'':'s'}</div><div class="pcol">${[...byCol].sort((x,y)=>y[1]-x[1]).map(([c,n])=>esc(c)+' ×'+num(n)).join(' · ')}</div><ul>${hits.map(([s,rows])=>`<li><button type="button" class="lnk" data-pset="${esc(s.id)}">${esc(s.name||s.setNumber)}</button> (${esc(s.setNumber||'')}) · ${rows.map(p=>esc(p[3])+' ×'+num(p[5])).join(', ')}</li>`).join('')}</ul>${miss?`<div class="note">Hay ${miss} set${miss===1?'':'s'} sin cargar.</div>`:''}</div>`}
+  // contenido
+  let tot=0,types=0,html='';
+  if(!ss.length)html='<div class="empty">No hay sets con este filtro.</div>';
+  else if(PT.view==='sets'){
+    const sorted=[...ss].sort((x,y)=>(x.name||'').localeCompare(y.name||'','es'));
+    for(const s of sorted){const k=snKey(s),d=PT.cache.get(k);
+      if(!d){html+=`<div class="pset off"><div class="psh"><span class="pimg">${s.imageUrl||s.photo?`<img src="${esc(s.photo||s.imageUrl)}" alt="" referrerpolicy="no-referrer" data-hide="1">`:''}</span><div class="pt"><b>${esc(s.name||k)}</b><div class="pcol">${esc(s.setNumber||'')} · sin cargar</div></div></div></div>`;continue}
+      const rows=d.p.filter(match);if(q&&!rows.length)continue;
+      const qty=rows.reduce((n,p)=>n+p[5],0);tot+=qty;types+=rows.length;const open=PT.open.has(s.id);
+      html+=`<div class="pset"><button type="button" class="psh" data-pset="${esc(s.id)}" aria-expanded="${open}"><span class="pimg">${s.imageUrl||s.photo?`<img src="${esc(s.photo||s.imageUrl)}" alt="" referrerpolicy="no-referrer" data-hide="1">`:''}</span><div class="pt"><b>${esc(s.name||k)}</b><div class="pcol">${esc(s.setNumber||'')} · ${rows.length} tipos · ${num(qty)} piezas${d.na?' · sin datos en Rebrickable':''}</div></div><span class="chev">${open?'▾':'▸'}</span></button>${open?`<div class="pbody">${rows.length?ptSort(rows.map(ptObj)).slice(0,400).map(ptRow).join(''):'<div class="empty">Sin piezas para mostrar.</div>'}</div>`:''}</div>`}
+    if(!html)html='<div class="empty">Sin resultados.</div>';
+  }else{
+    const agg=new Map();
+    for(const s of have)for(const p of PT.cache.get(snKey(s)).p){if(!match(p))continue;const k=p[0]+'|'+p[2],o=agg.get(k)||{ref:p[0],name:p[1],cid:p[2],col:p[3],rgb:p[4],img:p[6],q:0};o.q+=p[5];agg.set(k,o)}
+    const rows=ptSort([...agg.values()]);tot=rows.reduce((n,o)=>n+o.q,0);types=rows.length;const vis=rows.slice(0,PT.lim);
+    html=!rows.length?`<div class="empty">${miss?'Pulsa «Cargar piezas» para traer el inventario de estos sets.':'Sin resultados.'}</div>`:
+      (PT.view==='grid'?`<div class="pgrid">${vis.map(ptTile).join('')}</div>`:vis.map(ptRow).join(''))+(rows.length>vis.length?`<button class="btn sec small" id="pt-more" style="margin:10px auto;display:block">Mostrar más (${rows.length-vis.length})</button>`:'');
+  }
+  $('pt-stat').innerHTML=`<span class="chip">${ss.length} set${ss.length===1?'':'s'}</span><span class="chip">${have.length} con piezas</span>${miss?`<span class="chip warn">${miss} sin cargar</span>`:''}<span class="chip">${num(types)} tipos</span><span class="chip">${num(tot)} piezas</span>`;
   $('pt-load').textContent=PT.busy?'Parar':miss?`Cargar piezas (${miss})`:'Actualizar piezas';
-  const vis=rows.slice(0,PT.lim);
-  $('pt-list').innerHTML=!ss.length?'<div class="empty">No hay sets con este filtro.</div>':!rows.length?`<div class="empty">${miss?'Pulsa «Cargar piezas» para traer el inventario de estos sets.':'Sin resultados.'}</div>`:
-    vis.map(o=>`<div class="prow"><span class="pimg">${o.img?`<img src="${esc(o.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-hide="1">`:''}</span><div class="pt"><b>${esc(o.ref)}</b> ${esc(o.name)}<div class="pcol"><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(o.rgb)?'#'+o.rgb:'#ddd'}"></i>${esc(o.col)}</div></div><b class="pq">×${num(o.q)}</b></div>`).join('')+(rows.length>vis.length?`<button class="btn sec small" id="pt-more" style="margin:10px auto;display:block">Mostrar más (${rows.length-vis.length})</button>`:'');
+  $('pt-list').className=PT.view==='grid'?'plist g':'plist';$('pt-list').innerHTML=html;
 }
 async function ptRun(){
   if(PT.busy){PT.stop=true;return}
@@ -517,7 +540,11 @@ $('pt-set').addEventListener('change',e=>{PT.set=e.target.value;PT.lim=150;rende
 $('pt-sort').addEventListener('change',e=>{PT.sort=e.target.value;renderParts()});
 $('pt-q').addEventListener('input',e=>{PT.q=e.target.value;PT.lim=150;renderParts()});
 $('pt-load').addEventListener('click',ptRun);
-$('pt-list').addEventListener('click',e=>{if(e.target.id==='pt-more'){PT.lim+=150;renderParts()}});
+$('pt-list').addEventListener('click',e=>{if(e.target.id==='pt-more'){PT.lim+=150;renderParts();return}
+  const b=e.target.closest('[data-pset]');if(b){const id=b.dataset.pset;PT.open.has(id)?PT.open.delete(id):PT.open.add(id);renderParts()}});
+$('pt-ref').addEventListener('input',e=>{PT.ref=e.target.value;renderParts()});
+$('pt-ref-out').addEventListener('click',e=>{const b=e.target.closest('[data-pset]');if(!b)return;PT.view='sets';PT.open.add(b.dataset.pset);PT.q=PT.ref;$('pt-q').value=PT.ref;renderParts().then(()=>document.querySelector(`#pt-list [data-pset="${CSS.escape(b.dataset.pset)}"]`)?.scrollIntoView({block:'center'}))});
+$('pt-views').addEventListener('click',e=>{const b=e.target.closest('[data-pv]');if(!b)return;PT.view=b.dataset.pv;renderParts()});
 $('f-parts').addEventListener('click',()=>{const id=editing;closeSheet();PT.set=id;PT.scope='all';PT.theme='';PT.q='';go('parts')});
 
 $('f-resale').addEventListener('change',()=>{potUI();calc()});
@@ -532,7 +559,7 @@ function renderWish(){
   const sum=f=>all.reduce((n,s)=>n+(f(s)||0),0);
   $('wish-tot').innerHTML=`<span class="chip">${all.length} deseado${all.length===1?'':'s'}</span><span class="chip">${num(sum(s=>s.pieces))} piezas</span><span class="chip">PVP total ${money(sum(s=>s.rrp))}</span>`;
   $('wish-body').innerHTML=!a.length?`<div class="empty">${artSvg(aspecto,'')}<div>${all.length?'Ningún deseo con esta búsqueda.':'Tu lista de deseos está vacía. Pulsa + para añadir un set que quieras.'}</div></div>`:
-    `<div class="list">${a.map(s=>`<div class="wrow"><button class="it" data-id="${s.id}">${phHTML(s)}<div class="tx"><b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')} · ${esc(s.theme||'—')} · ${s.year||'—'} · ${num(s.pieces)} pzs</span><span>PVP ${money(s.rrp)} ${s.gift?'<span class="badge">Regalo</span>':''}${s.resale?'<span class="badge">Scalper</span>':''}${potTxt(s)}</span></div></button><button class="btn sec small" data-own="${s.id}">Ya lo tengo</button></div>`).join('')}</div>`;
+    `<div class="list">${a.map(s=>`<div class="wrow"><button class="it" data-id="${s.id}">${phHTML(s,false,'h')}<div class="tx"><b>${esc(s.name||s.setNumber)}</b><span>${esc(s.setNumber||'')} · ${esc(s.theme||'—')} · ${s.year||'—'} · ${num(s.pieces)} pzs</span><span>PVP ${money(s.rrp)} ${s.gift?'<span class="badge">Regalo</span>':''}${s.resale?'<span class="badge">Scalper</span>':''}${potTxt(s)}</span></div></button><button class="btn sec small" data-own="${s.id}">Ya lo tengo</button></div>`).join('')}</div>`;
 }
 $('wish-q').addEventListener('input',e=>{WS.q=e.target.value;renderWish()});
 $('wish-sort').addEventListener('change',e=>{WS.sort=e.target.value;renderWish()});
@@ -555,3 +582,10 @@ $('f-dup').addEventListener('click',()=>{const s=sets.find(x=>x.id===editing);if
   Object.entries(m).forEach(([k,v])=>{$('f-'+k).value=v==null?'':(k==='rrp'||k==='paid')?String(v).replace('.',','):String(v)});
   setChoice(CH.store,s.store);setChoice(CH.where,s.location);instrLink();preview();calc();
   $('sh-title').textContent='Copia de '+(s.name||s.setNumber||'set');toast('Copia creada: ajusta lo que cambie y guarda');});
+
+/* ---------- diseño: móvil, tablet u ordenador ---------- */
+function applyLayout(){const p=localStorage.getItem('bricks-layout')||'auto',w=innerWidth;
+  document.documentElement.dataset.layout=p!=='auto'?p:(w<700?'phone':w<1100?'tablet':'desktop')}
+applyLayout();addEventListener('resize',applyLayout);
+$('s-layout').value=localStorage.getItem('bricks-layout')||'auto';
+$('s-layout').addEventListener('change',e=>{try{localStorage.setItem('bricks-layout',e.target.value)}catch{}applyLayout()});

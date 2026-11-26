@@ -103,6 +103,11 @@
     <div class="pad">
       <div class="card"><div class="kv"><span>Versión de la app</span><b id="s-version"></b></div></div>
       <div class="card">
+        <h3>Pantalla</h3>
+        <select id="s-layout" aria-label="Diseño de pantalla"><option value="auto">Automático (según el tamaño)</option><option value="phone">Móvil</option><option value="tablet">Tablet</option><option value="desktop">Ordenador</option></select>
+        <div class="note">Cambia cuántas columnas y qué ancho usa la app.</div>
+      </div>
+      <div class="card">
         <h3>Sincronización</h3>
         <div class="row">
           <button class="btn" id="btn-sync">Sincronizar ahora</button>
@@ -138,7 +143,10 @@
   </section>
 
   <section id="v-parts" class="hidden">
-    <div class="bar"><h2>Piezas</h2></div>
+    <div class="bar"><h2>Cajón</h2></div>
+    <div class="tools"><input type="text" id="pt-ref" placeholder="Ref. de pieza (ej. 3001)" autocomplete="off" inputmode="text"></div>
+    <div id="pt-ref-out"></div>
+    <div class="views" id="pt-views" style="padding:0 14px 6px"><button data-pv="list" aria-label="Lista"><span class="vi">≡</span><span class="vl">Lista</span></button><button data-pv="grid" aria-label="Cuadrícula"><span class="vi">▦</span><span class="vl">Cuadrícula</span></button><button data-pv="sets" aria-label="Por set"><span class="vi">▤</span><span class="vl">Por set</span></button></div>
     <div class="tools"><select id="pt-scope" aria-label="Qué sets"><option value="owned">Poseídos</option><option value="built">Montados</option><option value="unbuilt">Sin montar</option><option value="building">En proceso</option><option value="wish">Deseados</option><option value="all">Todos</option></select></div>
     <div class="tools"><select id="pt-theme" aria-label="Colección"></select></div>
     <div class="tools"><select id="pt-set" aria-label="Set"></select></div>
@@ -153,7 +161,7 @@
     <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg>Inicio</button>
     <button data-tab="lib"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>Biblioteca</button>
     <button data-tab="wish"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>Deseos</button>
-    <button data-tab="parts"><svg viewBox="0 0 24 24"><rect x="4" y="12" width="16" height="8" rx="1"/><circle cx="8" cy="9" r="2"/><circle cx="16" cy="9" r="2"/></svg>Piezas</button>
+    <button data-tab="parts"><svg viewBox="0 0 24 24"><rect x="4" y="12" width="16" height="8" rx="1"/><circle cx="8" cy="9" r="2"/><circle cx="16" cy="9" r="2"/></svg>Cajón</button>
     <button data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Perfil</button>
     <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
   </div></nav>
