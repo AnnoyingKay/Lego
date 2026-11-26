@@ -63,7 +63,8 @@ export async function parseIo(buf){
   if(!name)throw new Error('sin-modelo');
   const r=parseLdr(new TextDecoder().decode(await z[name]()));
   let total=null;try{total=JSON.parse(new TextDecoder().decode(await z['.info']())).total_parts}catch{}
-  return{...r,total}}
+  let thumb=null;try{if(z['thumbnail.png'])thumb=await z['thumbnail.png']()}catch{}
+  return{...r,total,thumb}}
 
 /* ---------- CSV / texto ---------- */
 export function parseCsv(text){

@@ -193,7 +193,7 @@ button.tile{border:0;text-align:left;font:inherit;color:inherit;cursor:pointer;w
 .pbody .prow{border-radius:10px}.pbody.pgrid{display:grid}
 /* --- tablet y ordenador --- */
 [data-layout=tablet] #app{max-width:900px}[data-layout=desktop] #app{max-width:1240px}
-[data-layout=tablet] nav .in{max-width:900px}[data-layout=desktop] nav .in{max-width:720px}
+[data-layout=tablet] nav .in{max-width:900px}
 [data-layout=tablet] .hero svg,[data-layout=desktop] .hero svg{max-height:230px}
 [data-layout=tablet] .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}[data-layout=desktop] .tiles{grid-template-columns:repeat(6,minmax(0,1fr))}
 [data-layout=tablet] .grid.s{grid-template-columns:repeat(5,minmax(0,1fr))}[data-layout=desktop] .grid.s{grid-template-columns:repeat(8,minmax(0,1fr))}
@@ -206,7 +206,7 @@ button.tile{border:0;text-align:left;font:inherit;color:inherit;cursor:pointer;w
 [data-layout=tablet] .pset,[data-layout=desktop] .pset{grid-column:1/-1}
 [data-layout=tablet] .ovl,[data-layout=desktop] .ovl{align-items:center}
 [data-layout=tablet] .panel,[data-layout=desktop] .panel{max-width:640px;border-radius:18px;max-height:90vh}
-[data-layout=tablet] #fab{right:max(12px,calc((100vw - 900px)/2 + 12px))}[data-layout=desktop] #fab{right:max(12px,calc((100vw - 1240px)/2 + 12px))}
+[data-layout=tablet] #fab{right:max(12px,calc((100vw - 900px)/2 + 12px))}[data-layout=desktop] #fab{right:max(12px,calc((100vw - 96px - 1240px)/2 + 12px))}
 [data-layout=desktop] .shelfgrp{margin-left:14px;margin-right:14px}
 [data-layout=tablet] .wrow,[data-layout=desktop] .wrow{margin-bottom:0}
 
@@ -223,3 +223,17 @@ button.tile{border:0;text-align:left;font:inherit;color:inherit;cursor:pointer;w
 .mcs small{color:var(--mut)}
 nav button{font-size:10px}
 [data-layout=tablet] .mcard,[data-layout=desktop] .mcard{max-width:900px}
+.mci{flex:none;width:56px;height:56px;border-radius:10px;background:#f4f4f4;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--mut)}.mci img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* --- ordenador: pestañas a la izquierda --- */
+[data-layout=desktop] body{padding-left:96px}
+[data-layout=desktop] nav{top:0;bottom:0;right:auto;width:96px;border-top:0;border-right:1px solid var(--line);align-items:flex-start;justify-content:flex-start;overflow-y:auto}
+[data-layout=desktop] nav .in{flex-direction:column;max-width:none;width:100%;padding-top:10px;gap:2px}
+[data-layout=desktop] nav button{flex:none;width:100%;padding:12px 4px;font-size:12px;gap:4px}
+[data-layout=desktop] nav button.on{background:var(--t1);border-radius:0}
+
+.mcsaved{display:flex;gap:8px;overflow-x:auto;padding:12px 14px 2px}
+.mcchip{flex:none;width:92px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;text-align:center;font:inherit;color:inherit;display:flex;flex-direction:column;align-items:center;gap:3px}
+.mcchip.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--ac)}
+.mcchip .mci{width:100%;height:64px}.mcchip b{display:block;font-size:11px;line-height:1.2;max-height:2.4em;overflow:hidden;word-break:break-word}.mcchip small{font-size:11px;color:var(--mut)}
+[data-layout=desktop] .mcsaved{flex-wrap:wrap;overflow-x:visible}
