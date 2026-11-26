@@ -4,7 +4,7 @@ import {themeIcon} from './themeicons.js';
 import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
 
-const VERSION='1.15.0', VERSION_DATE='2026-11-26';
+const VERSION='1.16.0', VERSION_DATE='2026-11-26';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -599,6 +599,10 @@ const mcList=()=>{try{const v=JSON.parse(LS.get('bricks-moc','[]'));return Array
 const mcSave=l=>LS.set('bricks-moc',JSON.stringify(l));
 const mcEx=()=>{try{return JSON.parse(LS.get('bricks-moc-sets','{}'))||{}}catch{return{}}};
 /* por defecto no se usan: montados, en proceso, regalos y los de reventa; se puede cambiar set a set */
+/* selección rápida: nunca entran regalos ni reventa; Deseos no cuenta porque no es de tu colección */
+const MC_PRE={all:s=>!(s.gift||s.resale),dis:s=>!(s.built||s.building||s.gift||s.resale),built:s=>!!s.built&&!(s.gift||s.resale)};
+const mcPre=k=>{const o={};for(const s of sets)if(s.status==='owned')o[s.id]=MC_PRE[k](s);LS.set('bricks-moc-sets',JSON.stringify(o))};
+const mcPreOn=()=>{const own=sets.filter(s=>s.status==='owned');if(!own.length)return '';return Object.keys(MC_PRE).find(k=>own.every(s=>mcUse(s)===MC_PRE[k](s)))||''};
 const mcUse=s=>{const o=mcEx();return s.id in o?o[s.id]:!(s.built||s.building||s.gift||s.resale)};
 const mcColors=()=>{try{return JSON.parse(LS.get('bricks-colors','null'))}catch{return null}};
 async function mcFetchColors(){
@@ -649,6 +653,7 @@ async function renderMoc(){
   const P=mcPool(),cm=mcColors(),list=mcList(),owned=sets.filter(s=>s.status==='owned'),known=new Set([...P.names.keys()].map(k=>String(k).toLowerCase()));
   /* sets que usar */
   const nuse=owned.filter(mcUse).length;
+  {const k=mcPreOn();document.querySelectorAll('#mc-pre button').forEach(b=>{b.classList.toggle('on',b.dataset.mcpre===k);b.setAttribute('aria-pressed',b.dataset.mcpre===k)})}
   $('mc-pool-n').textContent=`${nuse} de ${owned.length}`;
   $('mc-pool-list').innerHTML=owned.length?[...owned].sort((x,y)=>(x.name||'').localeCompare(y.name||'','es')).map(s=>{
     const d=PT.cache&&PT.cache.get(snKey(s));
@@ -657,8 +662,8 @@ async function renderMoc(){
   if(!list.length){$('mc-saved').innerHTML='';$('mc-list').innerHTML='<div class="empty">Importa un archivo .io de Studio, un CSV de Rebrickable o un XML de BrickLink para ver si puedes montarlo.</div>';return}
   const cinfo=c=>P.cols.get(c)||(cm&&cm.nm[c])||LDN[c],cname=c=>{const x=cinfo(c);return x?x[0]:'Color '+c},crgb=c=>{const x=cinfo(c);return x&&/^[0-9a-f]{6}$/i.test(x[1])?'#'+x[1]:'#ddd'};
   /* guardadas: se quedan siempre; se elige una para verla */
-  $('mc-saved').innerHTML=list.map(c=>{const rs=mcResolve(c,cm,known).rows,s1=compare(rs,P.pool,'strict');
-    return `<button type="button" class="mcchip ${MC.open===c.id?'on':''}" data-mcopen="${esc(c.id)}" aria-pressed="${MC.open===c.id}" title="${esc(c.name)}"><span class="mci">${c.thumb?`<img src="${esc(c.thumb)}" alt="">`:MC_ICON}</span><b>${esc(c.name)}</b><small>${s1.pct.toFixed(0)} %</small></button>`}).join('');
+  $('mc-saved').innerHTML=list.map(c=>{const rs=mcResolve(c,cm,known).rows,s1=compare(rs,P.pool,'strict'),s2=compare(rs,P.pool,'loose');
+    return `<button type="button" class="mcchip ${MC.open===c.id?'on':''}" data-mcopen="${esc(c.id)}" aria-pressed="${MC.open===c.id}" title="${esc(c.name)}"><span class="mci">${c.thumb?`<img src="${esc(c.thumb)}" alt="">`:MC_ICON}</span><b>${esc(c.name)}</b><small title="Mismo color"><i class="d1"></i>${s1.pct.toFixed(0)} %</small><small title="Cualquier color"><i class="d2"></i>${s2.pct.toFixed(0)} %</small></button>`}).join('');
   $('mc-list').innerHTML=!list.some(c=>c.id===MC.open)?'<div class="empty">Elige una creación guardada de arriba o importa otra.</div>':list.filter(c=>c.id===MC.open).map(c=>{
     const {rows,note,adj,bl}=mcResolve(c,cm,known),st=compare(rows,P.pool,'strict'),lo=compare(rows,P.pool,'loose'),open=MC.open===c.id,cur=MC.mode==='loose'?lo:st;
     const bar=(l,x)=>`<div class="mcb"><span>${l}</span><div class="bar2"><i style="width:${x.pct.toFixed(1)}%"></i></div><b>${x.pct.toFixed(0)} %</b></div>`;
@@ -696,4 +701,5 @@ $('v-moc').addEventListener('click',async e=>{
     const PP=mcPool(),st=compare(mcResolve(cr,mcColors(),new Set([...PP.names.keys()].map(k=>String(k).toLowerCase()))).rows,PP.pool,MC.mode);
     const csv='Part,Color,Quantity\n'+st.missing.map(x=>`${x.part},${x.col},${x.qty}`).join('\n');
     try{await navigator.clipboard.writeText(csv);toast('Lista copiada (formato CSV de Rebrickable)')}catch{toast('No se pudo copiar')}}});
+$('mc-pre').addEventListener('click',e=>{const b=e.target.closest('[data-mcpre]');if(!b)return;mcPre(b.dataset.mcpre);renderMoc()});
 $('mc-pool-list').addEventListener('change',e=>{const i=e.target.closest('[data-mcset]');if(!i)return;const o=mcEx();o[i.dataset.mcset]=i.checked;LS.set('bricks-moc-sets',JSON.stringify(o));renderMoc()});
