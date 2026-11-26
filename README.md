@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.12.0
+Version: 1.12.1
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.12.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.12.1", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -31,6 +31,8 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.12.1 (2026-11-25): the gift box icon sits top right, next to the unbuilt box icon.
+
 1.12.0 (2026-11-25): "Duplicar este set" button (copies the data, starts unbuilt and not for gift or scalper) and a ×N copies label when you own the same set more than once.
 
 1.11.1 (2026-11-25): gift box icon for sets marked Para regalar (top left of the picture in the grids, and inside the Regalo label).

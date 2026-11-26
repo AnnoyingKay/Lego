@@ -175,3 +175,5 @@ button.tile{border:0;text-align:left;font:inherit;color:inherit;cursor:pointer;w
 .badge svg{vertical-align:-1px}
 
 .cp{display:inline-block;font-size:10px;padding:1px 6px;border-radius:99px;background:var(--t2);color:var(--ink);vertical-align:1px}
+
+.ovs{position:absolute;top:4px;right:4px;display:flex;gap:4px;z-index:1;pointer-events:none}.ovs .ov{position:static}
