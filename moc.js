@@ -69,6 +69,10 @@ export async function parseIo(buf){
 /* ---------- CSV / texto ---------- */
 export function parseCsv(text){
   const lines=text.replace(/^﻿/,'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);if(!lines.length)return{rows:[],kind:'rb'};
+  /* CSV de Pick a Brick de LEGO: elementId,quantity (número de elemento = pieza + color; se traduce con Rebrickable) */
+  if(/^"?element(id)?"?\s*[,;\t]/i.test(lines[0])){const rows=[];
+    for(const l of lines.slice(1)){const t=l.split(/[,;\t]/).map(z=>z.trim().replace(/^"|"$/g,''));const q=parseInt(t[1],10);if(/^\d{4,8}$/.test(t[0])&&q>0)rows.push({part:t[0],col:'0',qty:q})}
+    return{rows,kind:'el'}}
   const d=lines[0].includes('\t')?'\t':lines[0].includes(';')&&!lines[0].includes(',')?';':',';
   const cut=l=>l.split(d).map(x=>x.trim().replace(/^"|"$/g,''));
   const h=cut(lines[0]).map(x=>x.toLowerCase().replace(/[^a-z]/g,'')),hasH=h.some(x=>/^(part|quantity|qty|color|colour|ldrawid|blitemno|ldrawcolorid|blcolorid)$/.test(x));

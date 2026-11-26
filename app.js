@@ -4,7 +4,7 @@ import {themeIcon} from './themeicons.js';
 import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
 
-const VERSION='1.16.0', VERSION_DATE='2026-11-26';
+const VERSION='1.17.0', VERSION_DATE='2026-11-26';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -594,7 +594,7 @@ $('s-layout').value=localStorage.getItem('bricks-layout')||'auto';
 $('s-layout').addEventListener('change',e=>{try{localStorage.setItem('bricks-layout',e.target.value)}catch{}applyLayout()});
 
 /* ---------- Creación: ¿puedo montar esto con mis piezas? (guardado en este dispositivo) ---------- */
-const MC={open:null,mode:'strict',busy:false};
+const MC={open:null,mode:'strict',busy:false,tr:null};
 const mcList=()=>{try{const v=JSON.parse(LS.get('bricks-moc','[]'));return Array.isArray(v)?v:[]}catch{return[]}};
 const mcSave=l=>LS.set('bricks-moc',JSON.stringify(l));
 const mcEx=()=>{try{return JSON.parse(LS.get('bricks-moc-sets','{}'))||{}}catch{return{}}};
@@ -614,15 +614,27 @@ async function mcFetchColors(){
       for(const x of c.external_ids?.BrickLink?.ext_ids||[])cm.bl[x]=c.id}
     path=j.next?String(j.next).replace(/^https:\/\/rebrickable\.com\/api\/v3/,''):''}
   LS.set('bricks-colors',JSON.stringify(cm));return cm}
+/* números de elemento de LEGO -> [pieza, color] (se guarda lo ya traducido; clave de Rebrickable solo para esto) */
+const mcEls=()=>{try{return JSON.parse(LS.get('bricks-elements','{}'))||{}}catch{return{}}};
+async function mcTranslate(cid){
+  const k=keys().rb,c=mcList().find(x=>x.id===cid);if(!k||!c||MC.tr)return;
+  const em=mcEls(),todo=[...new Set(c.rows.map(x=>x.part))].filter(id=>!em[id]);if(!todo.length)return;
+  MC.tr={n:0,t:todo.length};let fail=0;renderMoc();
+  for(const id of todo){
+    try{const j=await rbGet('/lego/elements/'+id+'/',k);const e=mcEls();e[id]=[String(j.part.part_num).toLowerCase(),String(j.color.id)];LS.set('bricks-elements',JSON.stringify(e))}
+    catch(err){if(err&&err.status===404){const e=mcEls();e[id]=['?','0'];LS.set('bricks-elements',JSON.stringify(e))}else{fail++;if(fail>=3)break}}
+    MC.tr.n++;if(MC.tr.n%5===0)renderMoc()}
+  MC.tr=null;renderMoc();toast(fail?'Traducción detenida: puedes reintentar':'Elementos traducidos')}
 function mcResolve(c,cm,known){
-  const kind=c.kind||'rb';let note=false,adj=0;
+  const kind=c.kind||'rb';let note=false,adj=0,unr=0;const em=kind==='el'?mcEls():null;
   const rows=c.rows.map(x=>{let col=x.col,part=x.part;
+    if(kind==='el'){const e=em[part];if(e&&e[0]!=='?')return{part:e[0],col:e[1],qty:x.qty};unr+=x.qty;return{part:'e:'+part,col:'0',qty:x.qty}}
     /* BrickLink y Rebrickable numeran distinto algunas piezas (3070 / 3070b): si no está tal cual, prueba con sufijo */
     if(kind==='bl'&&known&&!known.has(part)){const s=['b','a','c','d'].map(z=>part+z).find(z=>known.has(z));if(s){part=s;adj++}}
     if(kind==='ldraw'){if(cm&&cm.ld[col]!=null)col=String(cm.ld[col])}
     else if(kind==='bl'){if(cm&&cm.bl[col]!=null)col=String(cm.bl[col]);else if(BL2LD[col]!=null)col=String(BL2LD[col]);else note=true}
     return{part,col,qty:x.qty}});
-  return{rows:mergeRows(rows),note,adj,bl:kind==='bl'}}
+  return{rows:mergeRows(rows),note,adj,bl:kind==='bl',unr,el:kind==='el'}}
 /* miniatura pequeña (96 px) para la tarjeta; el .io lleva una imagen del modelo dentro */
 async function mcThumb(bytes){
   try{const bm=await createImageBitmap(new Blob([bytes],{type:'image/png'})),k=96/Math.max(bm.width,bm.height),w=Math.max(1,Math.round(bm.width*Math.min(1,k))),h=Math.max(1,Math.round(bm.height*Math.min(1,k)));
@@ -635,7 +647,8 @@ async function mcImport(name,buf){
   const l=mcList();
   l.unshift({id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:name.replace(/\.[a-z]+$/i,'').replace(/[_]+/g,' ').trim()||'Creación',src:p.src,kind:p.kind,rows:mergeRows(p.rows),total:p.total??null,thumb:p.thumb?await mcThumb(p.thumb):'',unknown:p.unknown?.length||0,date:new Date().toISOString()});
   mcSave(l);
-  if(p.kind!=='rb'&&keys().rb&&!mcColors()){try{await mcFetchColors()}catch{}}
+  if(p.kind==='el'){mcTranslate(l[0].id)}
+  else if(p.kind!=='rb'&&keys().rb&&!mcColors()){try{await mcFetchColors()}catch{}}
   return l[0]}
 function mcPool(){
   const out=[],names=new Map(),cols=new Map(),miss=[],used=[];
@@ -659,13 +672,13 @@ async function renderMoc(){
     const d=PT.cache&&PT.cache.get(snKey(s));
     return `<label class="mcs"><input type="checkbox" data-mcset="${esc(s.id)}" ${mcUse(s)?'checked':''}><span><b>${esc(s.name||s.setNumber)}</b> <small>${esc(s.setNumber||'')}${s.built?' · montado':s.building?' · en proceso':s.gift?' · regalo':s.resale?' · reventa':''}${d?'':' · sin piezas cargadas'}</small></span></label>`}).join(''):'<div class="empty">Aún no tienes sets poseídos.</div>';
   $('mc-pool-note').innerHTML=P.miss.length?`<span class="chip warn">${P.miss.length} set${P.miss.length===1?'':'s'} marcado${P.miss.length===1?'':'s'} sin piezas cargadas: no cuentan. Cárgalos en Cajón.</span>`:'';
-  if(!list.length){$('mc-saved').innerHTML='';$('mc-list').innerHTML='<div class="empty">Importa un archivo .io de Studio, un CSV de Rebrickable o un XML de BrickLink para ver si puedes montarlo.</div>';return}
+  if(!list.length){$('mc-saved').innerHTML='';$('mc-list').innerHTML='<div class="empty">Importa un archivo .io de Studio, un CSV de Rebrickable o Pick a Brick, o un XML de BrickLink para ver si puedes montarlo.</div>';return}
   const cinfo=c=>P.cols.get(c)||(cm&&cm.nm[c])||LDN[c],cname=c=>{const x=cinfo(c);return x?x[0]:'Color '+c},crgb=c=>{const x=cinfo(c);return x&&/^[0-9a-f]{6}$/i.test(x[1])?'#'+x[1]:'#ddd'};
   /* guardadas: se quedan siempre; se elige una para verla */
   $('mc-saved').innerHTML=list.map(c=>{const rs=mcResolve(c,cm,known).rows,s1=compare(rs,P.pool,'strict'),s2=compare(rs,P.pool,'loose');
     return `<button type="button" class="mcchip ${MC.open===c.id?'on':''}" data-mcopen="${esc(c.id)}" aria-pressed="${MC.open===c.id}" title="${esc(c.name)}"><span class="mci">${c.thumb?`<img src="${esc(c.thumb)}" alt="">`:MC_ICON}</span><b>${esc(c.name)}</b><small title="Mismo color"><i class="d1"></i>${s1.pct.toFixed(0)} %</small><small title="Cualquier color"><i class="d2"></i>${s2.pct.toFixed(0)} %</small></button>`}).join('');
   $('mc-list').innerHTML=!list.some(c=>c.id===MC.open)?'<div class="empty">Elige una creación guardada de arriba o importa otra.</div>':list.filter(c=>c.id===MC.open).map(c=>{
-    const {rows,note,adj,bl}=mcResolve(c,cm,known),st=compare(rows,P.pool,'strict'),lo=compare(rows,P.pool,'loose'),open=MC.open===c.id,cur=MC.mode==='loose'?lo:st;
+    const {rows,note,adj,bl,unr,el}=mcResolve(c,cm,known),st=compare(rows,P.pool,'strict'),lo=compare(rows,P.pool,'loose'),open=MC.open===c.id,cur=MC.mode==='loose'?lo:st;
     const bar=(l,x)=>`<div class="mcb"><span>${l}</span><div class="bar2"><i style="width:${x.pct.toFixed(1)}%"></i></div><b>${x.pct.toFixed(0)} %</b></div>`;
     let body='';
     if(open){
@@ -673,8 +686,8 @@ async function renderMoc(){
       const miss=[...cur.missing].sort((x,y)=>y.qty-x.qty);
       body=`<div class="mcbody">
         <div class="views mcm"><button data-mcmode="strict" class="${MC.mode==='strict'?'on':''}">Mismo color</button><button data-mcmode="loose" class="${MC.mode==='loose'?'on':''}">Cualquier color</button></div>
-        <div class="refcard" style="margin:6px 0"><div class="refbig">${num(cur.got)} de ${num(cur.total)} piezas · ${cur.pct.toFixed(1)} %</div>${MC.mode==='loose'&&cur.subs?`<div class="pcol">${num(cur.subs)} con otro color distinto al del modelo.</div>`:''}<div class="pcol">${miss.length?`Te faltan ${num(miss.reduce((n,x)=>n+x.qty,0))} piezas de ${miss.length} referencia${miss.length===1?'':'s'}.`:'Tienes todo lo necesario.'}</div>${note?'<div class="note">Algunos colores de este archivo no tienen equivalente conocido en Rebrickable y cuentan como no encontrados. Los porcentajes pueden salir más bajos de lo real.</div>':''}${bl?`<div class="note">Archivo de BrickLink: algunas piezas se numeran distinto en Rebrickable${adj?` (${adj} ajustadas automáticamente)`:''}. Las que no coinciden cuentan como no encontradas. El .io de Studio es más exacto.</div>`:''}${c.unknown?`<div class="note">${c.unknown} color(es) directos de Studio sin equivalente.</div>`:''}</div>
-        ${miss.length?`<h4 class="mch">Por comprar <button class="btn sec small" data-mccopy="${esc(c.id)}">Copiar lista</button></h4>${miss.slice(0,300).map(m=>`<div class="prow"><div class="pt"><b>${esc(m.part)}</b> ${esc(P.names.get(m.part)||'')}<div class="pcol"><i class="sw" style="background:${crgb(m.col)}"></i>${esc(cname(m.col))}</div></div><b class="pq">×${num(m.qty)}</b></div>`).join('')}${miss.length>300?`<div class="note">Se muestran 300 de ${miss.length}.</div>`:''}`:''}
+        <div class="refcard" style="margin:6px 0"><div class="refbig">${num(cur.got)} de ${num(cur.total)} piezas · ${cur.pct.toFixed(1)} %</div>${MC.mode==='loose'&&cur.subs?`<div class="pcol">${num(cur.subs)} con otro color distinto al del modelo.</div>`:''}<div class="pcol">${miss.length?`Te faltan ${num(miss.reduce((n,x)=>n+x.qty,0))} piezas de ${miss.length} referencia${miss.length===1?'':'s'}.`:'Tienes todo lo necesario.'}</div>${note?'<div class="note">Algunos colores de este archivo no tienen equivalente conocido en Rebrickable y cuentan como no encontrados. Los porcentajes pueden salir más bajos de lo real.</div>':''}${el&&unr?`<div class="note">${MC.tr?`Traduciendo números de elemento de LEGO: ${MC.tr.n} de ${MC.tr.t}…`:keys().rb?`Este archivo usa números de elemento de LEGO y ${num(unr)} piezas aún no están traducidas a pieza y color, así que cuentan como no encontradas. <button class="btn sec small" data-mcel="${esc(c.id)}">Traducir ahora</button>`:'Este archivo usa números de elemento de LEGO (Pick a Brick). Para convertirlos a pieza y color hace falta la clave de Rebrickable (Ajustes, Avanzado); hasta entonces cuentan como no encontradas.'}</div>`:''}${bl?`<div class="note">Archivo de BrickLink: algunas piezas se numeran distinto en Rebrickable${adj?` (${adj} ajustadas automáticamente)`:''}. Las que no coinciden cuentan como no encontradas. El .io de Studio es más exacto.</div>`:''}${c.unknown?`<div class="note">${c.unknown} color(es) directos de Studio sin equivalente.</div>`:''}</div>
+        ${miss.length?`<h4 class="mch">Por comprar <button class="btn sec small" data-mccopy="${esc(c.id)}">Copiar lista</button></h4>${miss.slice(0,300).map(m=>`<div class="prow"><div class="pt"><b>${m.part.startsWith('e:')?'Elemento '+esc(m.part.slice(2)):esc(m.part)}</b> ${esc(P.names.get(m.part)||'')}${m.part.startsWith('e:')?'':`<div class="pcol"><i class="sw" style="background:${crgb(m.col)}"></i>${esc(cname(m.col))}</div>`}</div><b class="pq">×${num(m.qty)}</b></div>`).join('')}${miss.length>300?`<div class="note">Se muestran 300 de ${miss.length}.</div>`:''}`:''}
         <h4 class="mch">De dónde sacarlas</h4>
         ${byset.size?[...byset].sort((x,y)=>y[1].reduce((n,t)=>n+t.qty,0)-x[1].reduce((n,t)=>n+t.qty,0)).map(([id,ts])=>{const m=new Map();for(const t of ts){const k=t.part+'|'+t.col+'|'+t.want;m.set(k,(m.get(k)||0)+t.qty)}
           return `<details class="mcset"><summary><b>${esc(mcSetName(id))}</b> · ${num(ts.reduce((n,t)=>n+t.qty,0))} piezas</summary>${[...m].slice(0,200).map(([k,q])=>{const [pt,co,wa]=k.split('|');return `<div class="prow"><div class="pt"><b>${esc(pt)}</b> ${esc(P.names.get(pt)||'')}<div class="pcol"><i class="sw" style="background:${crgb(co)}"></i>${esc(cname(co))}${co!==wa?` <small>(el modelo pide ${esc(cname(wa))})</small>`:''}</div></div><b class="pq">×${num(q)}</b></div>`}).join('')}</details>`}).join(''):'<div class="empty">Ninguna pieza sale de tus sets con estos ajustes.</div>'}
@@ -694,12 +707,13 @@ $('mc-add').addEventListener('click',async()=>{
   catch{toast('No se reconoció la lista. Usa Part,Color,Quantity')}});
 $('v-moc').addEventListener('click',async e=>{
   const o=e.target.closest('[data-mcopen]');if(o){MC.open=MC.open===o.dataset.mcopen?null:o.dataset.mcopen;renderMoc();return}
+  const te=e.target.closest('[data-mcel]');if(te){mcTranslate(te.dataset.mcel);return}
   const m=e.target.closest('[data-mcmode]');if(m){MC.mode=m.dataset.mcmode;renderMoc();return}
   const d=e.target.closest('[data-mcdel]');if(d){if(confirm('¿Eliminar esta creación de este dispositivo?')){mcSave(mcList().filter(x=>x.id!==d.dataset.mcdel));MC.open=null;renderMoc()}return}
   const c=e.target.closest('[data-mccopy]');if(c){
     const cr=mcList().find(x=>x.id===c.dataset.mccopy);if(!cr)return;
     const PP=mcPool(),st=compare(mcResolve(cr,mcColors(),new Set([...PP.names.keys()].map(k=>String(k).toLowerCase()))).rows,PP.pool,MC.mode);
-    const csv='Part,Color,Quantity\n'+st.missing.map(x=>`${x.part},${x.col},${x.qty}`).join('\n');
+    const csv='Part,Color,Quantity\n'+st.missing.filter(x=>!x.part.startsWith('e:')).map(x=>`${x.part},${x.col},${x.qty}`).join('\n');
     try{await navigator.clipboard.writeText(csv);toast('Lista copiada (formato CSV de Rebrickable)')}catch{toast('No se pudo copiar')}}});
 $('mc-pre').addEventListener('click',e=>{const b=e.target.closest('[data-mcpre]');if(!b)return;mcPre(b.dataset.mcpre);renderMoc()});
 $('mc-pool-list').addEventListener('change',e=>{const i=e.target.closest('[data-mcset]');if(!i)return;const o=mcEx();o[i.dataset.mcset]=i.checked;LS.set('bricks-moc-sets',JSON.stringify(o));renderMoc()});
