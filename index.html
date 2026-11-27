@@ -75,6 +75,10 @@
     <div id="lib-body"></div>
   </section>
 
+  <section id="v-friends" class="hidden">
+    <div class="bar"><h2>Amigos</h2></div>
+    <div class="pad"><div id="fr-list"></div></div>
+  </section>
   <section id="v-profile" class="hidden">
     <div class="bar"><h2>Perfil</h2></div>
     <div class="pad">
@@ -91,6 +95,20 @@
           <button class="btn ghost small hidden" id="p-delphoto">Quitar foto</button>
         </div>
         <div class="note">Los puntos no se sincronizan con LEGO. La tarjeta solo se guarda aquí.</div>
+      </div>
+      <div class="card">
+        <h3>Tarjeta de coleccionista</h3>
+        <label class="f" for="p-nick">Apodo</label>
+        <input type="text" id="p-nick" maxlength="24" autocomplete="off" placeholder="Si lo dejas vacío se muestra tu correo">
+        <label class="f" for="p-fav">Set favorito</label>
+        <select id="p-fav" aria-label="Set favorito"></select>
+        <div class="row" style="margin-top:10px"><button class="btn" id="p-pub">Publicar tarjeta</button></div>
+        <div class="note" id="p-pubnote"></div>
+        <div id="p-cardprev"></div>
+      </div>
+      <div class="card">
+        <h3>Trofeos</h3>
+        <div id="p-trophies"></div>
       </div>
       <div class="card">
         <h3>Aspecto</h3>
@@ -183,6 +201,7 @@
     <button data-tab="wish"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z"/></svg>Deseos</button>
     <button data-tab="parts"><svg viewBox="0 0 24 24"><rect x="4" y="12" width="16" height="8" rx="1"/><circle cx="8" cy="9" r="2"/><circle cx="16" cy="9" r="2"/></svg>Cajón</button>
     <button data-tab="moc"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>Creación</button>
+    <button data-tab="friends"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.2-5.5 6.5-5.5s5.700 1.900 6.500 5.500"/><circle cx="17.500" cy="9" r="2.500"/><path d="M17 14.500c2.400.2 3.900 1.800 4.500 4.500"/></svg>Amigos</button>
     <button data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Perfil</button>
     <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>Ajustes</button>
   </div></nav>

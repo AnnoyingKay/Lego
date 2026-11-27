@@ -3,8 +3,9 @@ import {THEMES,ORDER,FABS,SHELF,artSvg,patternUri} from './themes.js';
 import {themeIcon} from './themeicons.js';
 import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
+import {evalTrophies} from './trophies.js';
 
-const VERSION='1.18.2', VERSION_DATE='2026-11-27';
+const VERSION='1.19.0', VERSION_DATE='2026-11-27';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -60,22 +61,25 @@ async function boot(){
     showOnly('app');startData();go(curTab);
   });
 }
-function stopData(){unsubs.forEach(f=>{try{f()}catch{}});unsubs=[];sets=[];profile={};cfg={};}
+function stopData(){unsubs.forEach(f=>{try{f()}catch{}});unsubs=[];sets=[];profile={};cfg={};FR.list=[];FR.err=''}
+const FR={list:[],err:''};
 function startData(){
   stopData();
   const q=fb.query(fb.collection(db,'bricks'),fb.where('addedBy','==',user.uid));
   unsubs.push(fb.onSnapshot(q,{includeMetadataChanges:true},snap=>{
     const list=[];snap.forEach(d=>list.push({...d.data(),id:d.id}));
     sets=list;
-    if(!snap.metadata.fromCache)setLast();
+    if(!snap.metadata.fromCache){setLast();schedulePublish()}
     renderAll();
   },err=>{if(err&&err.code==='permission-denied'){denied=true;showOnly('denied')}else toast('Error de sincronización')}));
   unsubs.push(fb.onSnapshot(fb.doc(db,'bricksMeta',user.uid),s=>{
     profile=s.exists()?s.data():{};
     if(profile.aspecto&&profile.aspecto!==aspecto)applyAspecto(profile.aspecto);
     if(curTab==='profile')syncProfile();
+    schedulePublish();
   },()=>{}));
   unsubs.push(fb.onSnapshot(fb.doc(db,'bricksMeta','config'),s=>{cfg=s.exists()?s.data():{};keysState()},()=>{}));
+  unsubs.push(fb.onSnapshot(fb.collection(db,'bricksCards'),s=>{FR.err='';FR.list=[];s.forEach(d=>{if(d.id!==user.uid)FR.list.push({...d.data(),uid:d.id})});if(curTab==='friends')renderFriends()},e=>{FR.err=e&&e.code==='permission-denied'?'perm':'err';FR.list=[];if(curTab==='friends')renderFriends()}));
 }
 const setLast=()=>{LS.set('bricks-lastsync',String(Date.now()));lastTxt()};
 function lastTxt(){const t=Number(LS.get('bricks-lastsync','0'));$('s-last').textContent='Última sincronización: '+(t?new Date(t).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}):'nunca')}
@@ -84,10 +88,10 @@ function lastTxt(){const t=Number(LS.get('bricks-lastsync','0'));$('s-last').tex
 let curTab='home';
 function go(t){
   if(t==='add'){openSheet(null);return}
-  curTab=t;['home','lib','wish','parts','moc','profile','settings'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
+  curTab=t;['home','lib','wish','parts','moc','friends','profile','settings'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   $('fab').classList.toggle('hidden',!(t==='home'||t==='lib'||t==='wish'));
-  if(t==='parts')renderParts();if(t==='moc')renderMoc();if(t==='profile')syncProfile();if(t==='settings')settingsInit();
+  if(t==='parts')renderParts();if(t==='moc')renderMoc();if(t==='friends')renderFriends();if(t==='profile'){syncProfile();renderTrophies()}if(t==='settings')settingsInit();
   window.scrollTo(0,0);renderAll();
 }
 $('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.tab)});
@@ -100,6 +104,8 @@ function renderAll(){
   if(curTab==='lib')renderLib();
   if(curTab==='parts')renderParts();
   if(curTab==='moc')renderMoc();
+  if(curTab==='friends')renderFriends();
+  if(curTab==='profile')renderTrophies();
   if(curTab==='wish')renderWish();
   filterOptions();choiceList();
 }
@@ -402,10 +408,13 @@ function syncProfile(){
   if(a!==$('p-name'))$('p-name').value=profile.name??(user?.displayName||'');
   if(a!==$('p-num'))$('p-num').value=profile.insidersNumber||'';
   $('p-delphoto').classList.toggle('hidden',!profile.cardImage);
+  if(a!==$('p-nick'))$('p-nick').value=profile.nick||'';
+  favOptions();pubUI();renderMemberPrev();
 }
 let pT;async function saveProfile(patch){
   try{await fb.setDoc(fb.doc(db,'bricksMeta',user.uid),{...patch,updatedAt:fb.serverTimestamp()},{merge:true})}catch{toast('No se pudo guardar el perfil')}
 }
+$('p-nick').addEventListener('input',()=>{clearTimeout(pT);pT=setTimeout(()=>saveProfile({nick:$('p-nick').value.trim().slice(0,24)}),600)});
 ['p-name','p-num'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(pT);pT=setTimeout(()=>saveProfile({name:$('p-name').value.trim(),insidersNumber:$('p-num').value.trim()}),600)}));
 $('aspectos').addEventListener('click',e=>{const b=e.target.closest('.asp');if(!b)return;applyAspecto(b.dataset.k);saveProfile({aspecto:b.dataset.k})});
 $('p-photo').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{saveProfile({cardImage:await shrink(f,900,.72)});toast('Foto guardada')}catch{toast('No se pudo leer la foto')}});
@@ -807,7 +816,7 @@ async function rarCalc(){
       R.d[part]=1}
     catch(e){if(e&&e.status===404)R.d[part]=1;else{fail++;if(fail>=3)break}}
     RAR.p.n++;if(RAR.p.n%10===0){LS.set(RAR_K,JSON.stringify(R));renderRare()}}
-  LS.set(RAR_K,JSON.stringify(R));RAR.p=null;RAR.run=false;renderRare();if(fail)toast('Cálculo detenido: puedes reanudarlo')}
+  LS.set(RAR_K,JSON.stringify(R));RAR.p=null;RAR.run=false;renderRare();schedulePublish();if(fail)toast('Cálculo detenido: puedes reanudarlo')}
 async function renderRare(){
   const box=$('home-rare');if(!box||curTab!=='home')return;
   const m=await ownedAgg();if(!m.size){box.classList.add('hidden');return}
@@ -826,3 +835,76 @@ async function renderRare(){
   box.classList.remove('hidden');
   box.innerHTML=`<h3>Piezas destacadas</h3>${body}${withN.length?'':`<div class="rpair">${card('La que más tienes',most,'Más unidades en tu colección')}</div>`}${act}`}
 $('home-rare').addEventListener('click',e=>{if(e.target.closest('[data-rarcalc]'))rarCalc()});
+
+/* ---------- trofeos ---------- */
+const TIERS=['Bronce','Plata','Oro','Platino','Diamante'],TCOL=['#cd7f32','#b8bec7','#f2b705','#6fcfe8','#b388ff'];
+const TIC={box:'<path d="M3 8l9-5 9 5v9l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/>',hammer:'<path d="M14 4l6 6-3 3-6-6z"/><path d="M11 9l-8 8 3 3 8-8"/>',check:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>',
+ brick:'<rect x="3" y="9" width="18" height="10" rx="1.5"/><circle cx="8" cy="6" r="1.8"/><circle cx="16" cy="6" r="1.8"/>',person:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',star:'<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',tower:'<path d="M7 21V9l5-6 5 6v12z"/><path d="M10 21v-5h4v5M10 11h4"/>',copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/>',
+ camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',gift:'<rect x="3" y="9" width="18" height="12" rx="1"/><path d="M12 9v12M3 13h18M12 9C9 9 8 5 10.5 5S12 9 12 9zm0 0c3 0 4-4 1.5-4S12 9 12 9z"/>',
+ heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',coin:'<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.6-.9-1.5-1.3-2.5-1.3-1.5 0-2.5.8-2.5 1.9 0 2.6 5.2 1.2 5.2 3.8 0 1.1-1.1 1.9-2.7 1.9-1.1 0-2.1-.4-2.8-1.3M12 6.5v1.7m0 7.6v1.7"/>',
+ tag:'<path d="M3 12V4.5A1.5 1.5 0 0 1 4.5 3H12l9 9-8.5 8.5z"/><circle cx="8" cy="8" r="1.4"/>',percent:'<path d="M5 19L19 5"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',sell:'<path d="M4 7h16l-1.5 11a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="M8 7a4 4 0 0 1 8 0"/>',
+ up:'<circle cx="12" cy="12" r="9"/><path d="M12 16.5V8m-3.5 3.5L12 8l3.5 3.5"/>',drawer:'<rect x="4" y="12" width="16" height="8" rx="1"/><circle cx="8" cy="9" r="2"/><circle cx="16" cy="9" r="2"/>',cube:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>',
+ gem:'<path d="M6 4h12l3 5-9 11L3 9z"/><path d="M3 9h18M9 4l-1.5 5L12 20l4.5-11L15 4"/>'};
+const TUN={paid:' €',save:' €',dear:' €',soldmoney:' €',profit:' €',bestsale:' €',savepct:' %'};
+async function trophyCtx(forCard){
+  const c=await ptLoad(),R=rarGet(),vals=Object.values(R.n);
+  return{sets,parts:sets.filter(s=>s.status==='owned'&&c.get(snKey(s))).length,moc:mcList().length,rareMin:vals.length?Math.min(...vals):null,hasCard:forCard||!!profile.shareCard,hasFav:!!(profile.favSetId&&sets.some(s=>s.id===profile.favSetId))}}
+async function renderTrophies(){
+  const box=$('p-trophies');if(!box||curTab!=='profile')return;
+  const tr=evalTrophies(await trophyCtx()),done=tr.reduce((n,t)=>n+t.level,0),tot=tr.reduce((n,t)=>n+t.max,0),got=tr.filter(t=>t.level>0).length;
+  let g='',out=`<div class="tsum"><b>${got}</b> de ${tr.length} trofeos con medalla · <b>${done}</b> de ${tot} niveles</div><div class="bar2"><i style="width:${(done/tot*100).toFixed(1)}%"></i></div>`;
+  for(const t of tr){
+    if(t.g!==g){g=t.g;out+=`<h4 class="mch">${esc(g)}</h4>`}
+    const col=t.level?(t.max===1?TCOL[2]:TCOL[Math.min(t.level,5)-1]):'#d9d6cc',u=TUN[t.id]||'';
+    const val=t.inv?(t.value==null?'Sin calcular: abre Inicio, Piezas destacadas':`Tu pieza más rara aparece en ${num(t.value)} set${t.value===1?'':'s'}`+(t.next!=null?` · siguiente: ${num(t.next)} o menos`:'')):
+      (t.next!=null?`${num(t.value)}${u} / ${num(t.next)}${u}`:`${num(t.value)}${u} · completo`);
+    out+=`<div class="tro ${t.level?'on':''}"><div class="med" style="background:${col}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIC[t.ic]||TIC.star}</svg></div>
+      <div class="tt"><b>${esc(t.name)}</b>${t.level?` <em style="color:${col==='#b8bec7'?'#6b7280':col}">${t.max===1?'Conseguido':TIERS[Math.min(t.level,5)-1]}</em>`:''}<span>${esc(t.desc)}</span>
+      <div class="bar2"><i style="width:${t.pct}%"></i></div><small>${val}</small></div></div>`}
+  box.innerHTML=out}
+
+/* ---------- tarjeta de coleccionista (se publica en bricksCards/<uid> para los demás usuarios) ---------- */
+function favOptions(){
+  const sel=$('p-fav');if(document.activeElement===sel)return;
+  const l=sets.filter(s=>s.status==='owned').sort((x,y)=>(x.name||'').localeCompare(y.name||'','es'));
+  sel.innerHTML='<option value="">Sin favorito</option>'+l.map(s=>`<option value="${esc(s.id)}">${esc(s.name||s.setNumber)}${s.setNumber?' · '+esc(s.setNumber):''}</option>`).join('');
+  sel.value=l.some(s=>s.id===profile.favSetId)?profile.favSetId:''}
+function pubUI(){const on=!!profile.shareCard;$('p-pub').textContent=on?'Dejar de compartir':'Publicar tarjeta';$('p-pub').classList.toggle('sec',on);$('p-pubnote').textContent=on?'Tu tarjeta es visible para los demás usuarios de la app, en la pestaña Amigos. Se actualiza sola.':'Ahora mismo nadie ve tu tarjeta. Al publicarla, los demás usuarios de la app verán: apodo (o correo), sets montados y poseídos, set favorito, pieza más rara y trofeos conseguidos.'}
+async function memberData(){
+  const own=sets.filter(s=>s.status==='owned'),ag=await ownedAgg(),R=rarGet(),tr=evalTrophies(await trophyCtx(true));
+  const cand=[...ag.values()].filter(o=>R.n[o.k]!=null).sort((x,y)=>R.n[x.k]-R.n[y.k]||y.q-x.q)[0];
+  const f=sets.find(s=>s.id===profile.favSetId&&s.status==='owned');
+  return{nick:(profile.nick||'').trim(),email:user.email||'',built:own.filter(s=>s.built).length,owned:own.length,
+    fav:f?{name:f.name||f.setNumber||'',num:f.setNumber||'',img:(f.imageUrl||'').slice(0,300),pieces:f.pieces||null}:null,
+    rare:cand?{part:cand.part,name:cand.name||'',cn:cand.cn||'',rgb:cand.rgb||'',img:(cand.img||'').slice(0,300),n:R.n[cand.k],q:cand.q}:null,
+    tdone:tr.reduce((n,t)=>n+t.level,0),tmax:tr.reduce((n,t)=>n+t.max,0)}}
+function memberHTML(c){
+  const nm=(c.nick||'').trim()||c.email||'Sin nombre',ini=nm.trim()[0]?.toUpperCase()||'?';
+  const im=u=>u?`<img src="${esc(String(u).replace(/^http:\/\//i,'https://'))}" alt="" loading="lazy">`:'';
+  return `<div class="fcard"><div class="fh"><span class="fav2">${esc(ini)}</span><div class="fn"><b>${esc(nm)}</b><small>${c.nick&&c.email?esc(c.email):''}</small></div><span class="ftr" title="Niveles de trofeos">🏆 ${num(c.tdone||0)}/${num(c.tmax||0)}</span></div>
+   <div class="fst"><div><b>${num(c.built||0)}</b><span>Montados</span></div><div><b>${num(c.owned||0)}</b><span>Poseídos</span></div></div>
+   <div class="fx"><div class="fxt">Set favorito</div>${c.fav?`<div class="fxr"><span class="fim">${im(c.fav.img)}</span><div><b>${esc(c.fav.name)}</b><small>${esc(c.fav.num||'')}${c.fav.pieces?' · '+num(c.fav.pieces)+' piezas':''}</small></div></div>`:'<div class="fxn">Sin elegir</div>'}</div>
+   <div class="fx"><div class="fxt">Pieza más rara</div>${c.rare?`<div class="fxr"><span class="fim">${im(c.rare.img)}</span><div><b>${esc(c.rare.part)} · ${esc(c.rare.name)}</b><small><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(c.rare.rgb||'')?'#'+c.rare.rgb:'#ddd'}"></i> ${esc(c.rare.cn||'')} · en ${num(c.rare.n)} set${c.rare.n===1?'':'s'} · tiene ${num(c.rare.q)}</small></div></div>`:'<div class="fxn">Sin calcular</div>'}</div></div>`}
+async function renderMemberPrev(){const box=$('p-cardprev');if(!box||curTab!=='profile')return;box.innerHTML='<div class="fxt" style="margin:8px 0 4px">Así te ven</div>'+memberHTML(await memberData())}
+let pubT,pubLast='';
+function schedulePublish(){
+  if(!user||!profile.shareCard)return;
+  clearTimeout(pubT);pubT=setTimeout(async()=>{
+    try{const d=await memberData(),j=JSON.stringify(d);if(j===pubLast&&j===LS.get('bricks-card-last'+user.uid,''))return;
+      await fb.setDoc(fb.doc(db,'bricksCards',user.uid),{...d,updatedAt:fb.serverTimestamp()});pubLast=j;LS.set('bricks-card-last'+user.uid,j)}catch{}
+  },2500)}
+$('p-fav').addEventListener('change',()=>{saveProfile({favSetId:$('p-fav').value});toast($('p-fav').value?'Set favorito guardado':'Favorito quitado')});
+$('p-pub').addEventListener('click',async()=>{
+  try{
+    if(profile.shareCard){await fb.deleteDoc(fb.doc(db,'bricksCards',user.uid));await saveProfile({shareCard:false});LS.set('bricks-card-last'+user.uid,'');pubLast='';toast('Ya no compartes tu tarjeta')}
+    else{const d=await memberData();await fb.setDoc(fb.doc(db,'bricksCards',user.uid),{...d,updatedAt:fb.serverTimestamp()});LS.set('bricks-card-last'+user.uid,JSON.stringify(d));await saveProfile({shareCard:true});toast('Tarjeta publicada')}
+  }catch(e){toast(e&&e.code==='permission-denied'?'Falta publicar la regla de Firestore para bricksCards':'No se pudo publicar')}});
+['p-nick'].forEach(()=>{});
+/* ---------- amigos ---------- */
+function renderFriends(){
+  const box=$('fr-list');if(!box||curTab!=='friends')return;
+  if(FR.err==='perm'){box.innerHTML='<div class="empty">No se puede leer la colección de tarjetas. Falta añadir la regla de Firestore para bricksCards (está en el README).</div>';return}
+  if(FR.err){box.innerHTML='<div class="empty">No se pudieron cargar las tarjetas. Inténtalo de nuevo.</div>';return}
+  const l=[...FR.list].sort((x,y)=>((x.nick||x.email||'')).localeCompare((y.nick||y.email||''),'es'));
+  box.innerHTML=l.length?l.map(memberHTML).join(''):'<div class="empty">Todavía no hay tarjetas de amigos. Cuando alguien publique la suya desde Perfil, aparecerá aquí.</div>'}
