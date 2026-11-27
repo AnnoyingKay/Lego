@@ -4,7 +4,7 @@ import {themeIcon} from './themeicons.js';
 import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
 
-const VERSION='1.17.0', VERSION_DATE='2026-11-26';
+const VERSION='1.18.0', VERSION_DATE='2026-11-27';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -120,16 +120,28 @@ function renderHome(){
   const ahorro=sum(both,s=>s.rrp-s.paid);
   const potS=sets.filter(s=>s.resale&&s.status!=='sold'&&s.potPrice!=null&&(s.paid!=null?s.paid:s.rrp)),potN=potS.length,potB=sum(potS,s=>s.potPrice-(s.paid!=null?s.paid:s.rrp));
   const ben=sum(sets.filter(s=>s.status==='sold'&&s.salePrice!=null&&s.paid!=null),s=>s.salePrice-s.paid);
-  $('home-money').innerHTML=`<h3>Cuentas</h3>
+  /* tarjetas de dinero: colección (sin scalper) separada de lo que se va a vender */
+  const paidColl=sum(c,s=>s.paid),paidRes=sum(sc,s=>s.paid),paidOwn=sum(own,s=>s.paid);
+  const bc=c.filter(s=>s.rrp!=null&&s.paid!=null),svC=sum(bc,s=>s.rrp-s.paid),rpC=sum(bc,s=>s.rrp),svP=rpC?svC/rpC*100:null;
+  const ba=own.filter(s=>s.rrp!=null&&s.paid!=null),svA=sum(ba,s=>s.rrp-s.paid),rpA=sum(ba,s=>s.rrp),svAP=rpA?svA/rpA*100:null;
+  const pct=n=>n==null?'—':n.toFixed(1).replace('.',',')+' %';
+  const net=paidOwn-ben,netPot=net-potB;
+  const mc=(l,v,sub)=>`<div class="mnyc"><span>${l}</span><b>${v}</b>${sub?`<small>${sub}</small>`:''}</div>`;
+  $('home-money').innerHTML=`<h3>Cuentas</h3><div class="mny">`
+   +mc('Pagado por tu colección',money(paidColl),sc.length?`Para vender: ${money(paidRes)} · todo: ${money(paidOwn)}`:'')
+   +mc('Ahorro frente al PVP',money(svC),`${pct(svP)} del PVP${sc.length?` · con scalper: ${money(svA)} (${pct(svAP)})`:''}`)
+   +mc('Beneficio de ventas',money(ben),`${soldAll.length} vendido${soldAll.length===1?'':'s'}`)
+   +mc('Beneficio previsto',money(potB),`${potN} set${potN===1?'':'s'} para vender`)
+   +mc('Precio de la colección',money(net),'Pagado − beneficio de ventas')
+   +mc('Precio potencial',money(netPot),'Pagado − beneficio de ventas − beneficio previsto')
+   +`</div>
    <div class="kv"><span>Piezas en tu colección</span><b>${num(pz(c))}</b></div>
    <div class="kv"><span>Minifiguras en tu colección</span><b>${num(sum(c,s=>s.minifigs))}</b></div>
-   <div class="kv"><span>Total pagado</span><b>${money(sum(money_,s=>s.paid))}</b></div>
    <div class="kv"><span>Total PVP</span><b>${money(sum(money_,s=>s.rrp))}</b></div>
-   <div class="kv"><span>Ahorrado frente al PVP</span><b>${money(ahorro)}</b></div>
-   <div class="kv"><span>Beneficio de ventas</span><b>${money(ben)}</b></div>${potN?`<div class="kv"><span>Beneficio previsto (scalper)</span><b>${money(potB)}</b></div>`:''}
    <div class="kv"><span>Deseados</span><b>${sets.filter(s=>s.status==='wishlist').length}</b></div>`;
   const rec=sets.filter(s=>s.status!=='wishlist').sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,8);
   $('home-recent').classList.toggle('hidden',!rec.length);
+  renderRare();
   $('recent').innerHTML=rec.map(s=>`<button class="th it" style="padding:0;border:0;background:none;display:block" data-id="${s.id}">${phHTML(s)}</button>`).join('');
 }
 const copiesN=s=>{if(s.status!=='owned')return 0;const n=(s.setNumber||'').trim().replace(/-1$/,'');return n?sets.filter(x=>x.status==='owned'&&(x.setNumber||'').trim().replace(/-1$/,'')===n).length:0};
@@ -297,7 +309,7 @@ let delT;$('f-del').addEventListener('click',async()=>{
 const keys=()=>({bs:cfg.bricksetKey||LS.get('bricks-k-bs',''),rb:cfg.rebrickableKey||LS.get('bricks-k-rb','')});
 async function getJson(url,opts={}){const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);
   try{const r=await fetch(url,{...opts,signal:c.signal});if(!r.ok){const e=new Error('http');e.status=r.status;throw e}return await r.json()}finally{clearTimeout(t)}}
-function bsNorm(s){return{setNumber:(s.numberVariant>1?`${s.number}-${s.numberVariant}`:String(s.number)),name:s.name,theme:s.theme||'',subtheme:s.subtheme||'',year:s.year??null,pieces:s.pieces??null,minifigs:s.minifigs??null,rrp:s.LEGOCom?.DE?.retailPrice??null,imageUrl:s.image?.imageURL||s.image?.thumbnailURL||''}}
+function bsNorm(s){return{setNumber:(s.numberVariant>1?`${s.number}-${s.numberVariant}`:String(s.number)),name:s.name,theme:s.theme||'',subtheme:s.subtheme||'',year:s.year??null,pieces:s.pieces??null,minifigs:s.minifigs??null,rrp:s.LEGOCom?.DE?.retailPrice??null,rrpAlt:{US:s.LEGOCom?.US?.retailPrice??null,UK:s.LEGOCom?.UK?.retailPrice??null,CA:s.LEGOCom?.CA?.retailPrice??null},imageUrl:s.image?.imageURL||s.image?.thumbnailURL||''}}
 async function bsQuery(params,key){
   const j=await getJson(`https://brickset.com/api/v3.asmx/getSets?apiKey=${encodeURIComponent(key)}&userHash=&params=${encodeURIComponent(JSON.stringify(params))}`);
   if(j.status!=='success'){const e=new Error(j.message||'brickset');e.status=/key/i.test(j.message||'')?401:500;throw e}
@@ -344,7 +356,8 @@ function fillFrom(r){
 }
 async function pick(r){
   $('f-res').innerHTML='';$('f-msg').textContent='Rellenando…';
-  r=await enrich({...r},keys().rb);fillFrom(r);$('f-msg').textContent=r.rrp==null?'Datos rellenados. Este set no tiene PVP en la fuente: escríbelo a mano.':'Datos rellenados. Revísalos antes de guardar.';
+  r=await enrich({...r},keys().rb);fillFrom(r);const alt=r.rrpAlt?[['US','$'],['UK','£'],['CA','CA$']].filter(([c])=>r.rrpAlt[c]!=null).map(([c,m])=>`${m}${String(r.rrpAlt[c]).replace('.',',')}`):[];
+  $('f-msg').textContent=r.rrp==null?(alt.length?`Datos rellenados. Brickset no tiene PVP en euros para este set (solo ${alt.join(' · ')}): escribe el de LEGO España a mano.`:'Datos rellenados. Este set no tiene PVP en la fuente: escríbelo a mano.'):'Datos rellenados. El PVP es el de Alemania (euros); compruébalo con el de LEGO España.';
 }
 async function search(){
   const q=$('f-q').value.trim();if(!q){$('f-msg').textContent='Escribe un número, un nombre o escanea el código.';return}
@@ -687,7 +700,7 @@ async function renderMoc(){
       body=`<div class="mcbody">
         <div class="views mcm"><button data-mcmode="strict" class="${MC.mode==='strict'?'on':''}">Mismo color</button><button data-mcmode="loose" class="${MC.mode==='loose'?'on':''}">Cualquier color</button></div>
         <div class="refcard" style="margin:6px 0"><div class="refbig">${num(cur.got)} de ${num(cur.total)} piezas · ${cur.pct.toFixed(1)} %</div>${MC.mode==='loose'&&cur.subs?`<div class="pcol">${num(cur.subs)} con otro color distinto al del modelo.</div>`:''}<div class="pcol">${miss.length?`Te faltan ${num(miss.reduce((n,x)=>n+x.qty,0))} piezas de ${miss.length} referencia${miss.length===1?'':'s'}.`:'Tienes todo lo necesario.'}</div>${note?'<div class="note">Algunos colores de este archivo no tienen equivalente conocido en Rebrickable y cuentan como no encontrados. Los porcentajes pueden salir más bajos de lo real.</div>':''}${el&&unr?`<div class="note">${MC.tr?`Traduciendo números de elemento de LEGO: ${MC.tr.n} de ${MC.tr.t}…`:keys().rb?`Este archivo usa números de elemento de LEGO y ${num(unr)} piezas aún no están traducidas a pieza y color, así que cuentan como no encontradas. <button class="btn sec small" data-mcel="${esc(c.id)}">Traducir ahora</button>`:'Este archivo usa números de elemento de LEGO (Pick a Brick). Para convertirlos a pieza y color hace falta la clave de Rebrickable (Ajustes, Avanzado); hasta entonces cuentan como no encontradas.'}</div>`:''}${bl?`<div class="note">Archivo de BrickLink: algunas piezas se numeran distinto en Rebrickable${adj?` (${adj} ajustadas automáticamente)`:''}. Las que no coinciden cuentan como no encontradas. El .io de Studio es más exacto.</div>`:''}${c.unknown?`<div class="note">${c.unknown} color(es) directos de Studio sin equivalente.</div>`:''}</div>
-        ${miss.length?`<h4 class="mch">Por comprar <button class="btn sec small" data-mccopy="${esc(c.id)}">Copiar lista</button></h4>${miss.slice(0,300).map(m=>`<div class="prow"><div class="pt"><b>${m.part.startsWith('e:')?'Elemento '+esc(m.part.slice(2)):esc(m.part)}</b> ${esc(P.names.get(m.part)||'')}${m.part.startsWith('e:')?'':`<div class="pcol"><i class="sw" style="background:${crgb(m.col)}"></i>${esc(cname(m.col))}</div>`}</div><b class="pq">×${num(m.qty)}</b></div>`).join('')}${miss.length>300?`<div class="note">Se muestran 300 de ${miss.length}.</div>`:''}`:''}
+        ${miss.length?`<h4 class="mch">Por comprar <span><button class="btn sec small" data-mccopy="${esc(c.id)}">Copiar lista</button> <button class="btn sec small" data-mccsv="${esc(c.id)}">Descargar CSV</button></span></h4>${miss.slice(0,300).map(m=>`<div class="prow"><div class="pt"><b>${m.part.startsWith('e:')?'Elemento '+esc(m.part.slice(2)):esc(m.part)}</b> ${esc(P.names.get(m.part)||'')}${m.part.startsWith('e:')?'':`<div class="pcol"><i class="sw" style="background:${crgb(m.col)}"></i>${esc(cname(m.col))}</div>`}</div><b class="pq">×${num(m.qty)}</b></div>`).join('')}${miss.length>300?`<div class="note">Se muestran 300 de ${miss.length}.</div>`:''}`:''}
         <h4 class="mch">De dónde sacarlas</h4>
         ${byset.size?[...byset].sort((x,y)=>y[1].reduce((n,t)=>n+t.qty,0)-x[1].reduce((n,t)=>n+t.qty,0)).map(([id,ts])=>{const m=new Map();for(const t of ts){const k=t.part+'|'+t.col+'|'+t.want;m.set(k,(m.get(k)||0)+t.qty)}
           return `<details class="mcset"><summary><b>${esc(mcSetName(id))}</b> · ${num(ts.reduce((n,t)=>n+t.qty,0))} piezas</summary>${[...m].slice(0,200).map(([k,q])=>{const [pt,co,wa]=k.split('|');return `<div class="prow"><div class="pt"><b>${esc(pt)}</b> ${esc(P.names.get(pt)||'')}<div class="pcol"><i class="sw" style="background:${crgb(co)}"></i>${esc(cname(co))}${co!==wa?` <small>(el modelo pide ${esc(cname(wa))})</small>`:''}</div></div><b class="pq">×${num(q)}</b></div>`}).join('')}</details>`}).join(''):'<div class="empty">Ninguna pieza sale de tus sets con estos ajustes.</div>'}
@@ -710,6 +723,12 @@ $('v-moc').addEventListener('click',async e=>{
   const te=e.target.closest('[data-mcel]');if(te){mcTranslate(te.dataset.mcel);return}
   const m=e.target.closest('[data-mcmode]');if(m){MC.mode=m.dataset.mcmode;renderMoc();return}
   const d=e.target.closest('[data-mcdel]');if(d){if(confirm('¿Eliminar esta creación de este dispositivo?')){mcSave(mcList().filter(x=>x.id!==d.dataset.mcdel));MC.open=null;renderMoc()}return}
+  const dl=e.target.closest('[data-mccsv]');if(dl){
+    const cr=mcList().find(x=>x.id===dl.dataset.mccsv);if(!cr)return;
+    const PP=mcPool(),st=compare(mcResolve(cr,mcColors(),new Set([...PP.names.keys()].map(k=>String(k).toLowerCase()))).rows,PP.pool,MC.mode),cm=mcColors();
+    const ci=id=>PP.cols.get(id)||(cm&&cm.nm[id])||LDN[id],cn=id=>{const x=ci(id);return x?x[0]:''};
+    csvDown(`piezas-que-necesito-${(cr.name||'creacion').replace(/[^\w-]+/g,'-').slice(0,40)}.csv`,['Pieza','Nombre','Color (id)','Color','Cantidad que falta'],
+      [...st.missing].sort((x,y)=>y.qty-x.qty).map(x=>x.part.startsWith('e:')?['Elemento '+x.part.slice(2),'','','',x.qty]:[x.part,PP.names.get(x.part)||'',x.col,cn(x.col),x.qty]));return}
   const c=e.target.closest('[data-mccopy]');if(c){
     const cr=mcList().find(x=>x.id===c.dataset.mccopy);if(!cr)return;
     const PP=mcPool(),st=compare(mcResolve(cr,mcColors(),new Set([...PP.names.keys()].map(k=>String(k).toLowerCase()))).rows,PP.pool,MC.mode);
@@ -717,3 +736,86 @@ $('v-moc').addEventListener('click',async e=>{
     try{await navigator.clipboard.writeText(csv);toast('Lista copiada (formato CSV de Rebrickable)')}catch{toast('No se pudo copiar')}}});
 $('mc-pre').addEventListener('click',e=>{const b=e.target.closest('[data-mcpre]');if(!b)return;mcPre(b.dataset.mcpre);renderMoc()});
 $('mc-pool-list').addEventListener('change',e=>{const i=e.target.closest('[data-mcset]');if(!i)return;const o=mcEx();o[i.dataset.mcset]=i.checked;LS.set('bricks-moc-sets',JSON.stringify(o));renderMoc()});
+
+/* ---------- exportar a CSV (se abre en Excel) ---------- */
+const csvC=v=>{v=v==null?'':String(v);return /[";\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+const csvN=n=>n==null?'':String(n).replace('.',',');
+function csvDown(name,head,rows){
+  const t='\ufeff'+[head,...rows].map(r=>r.map(csvC).join(';')).join('\r\n');
+  const u=URL.createObjectURL(new Blob([t],{type:'text/csv;charset=utf-8'})),l=document.createElement('a');
+  l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Descargado '+name)}
+const stTxt=s=>s.status==='wishlist'?'Deseado':s.status==='sold'?'Vendido':s.built?'Montado':s.building?'En proceso':'Por montar';
+const dStr=new Date().toISOString().slice(0,10);
+function expColl(){
+  const l=sets.filter(s=>s.status==='owned').sort((x,y)=>(x.name||'').localeCompare(y.name||'','es'));
+  if(!l.length){toast('No hay sets en tu colección');return}
+  csvDown(`coleccion-${dStr}.csv`,['Número','Nombre','Tema','Año','Piezas','Minifiguras','PVP','Pagado','Ahorro','Fecha de compra','Tienda','Estado','Regalo','Scalper','Notas'],
+    l.map(s=>[s.setNumber,s.name,s.theme,s.year,s.pieces,s.minifigs,csvN(s.rrp),csvN(s.paid),csvN(s.rrp!=null&&s.paid!=null?+(s.rrp-s.paid).toFixed(2):null),s.purchaseDate,s.store,stTxt(s),s.gift?'Sí':'',s.resale?'Sí':'',s.notes]))}
+function expSales(){
+  const l=sets.filter(s=>s.status==='sold'||(s.status==='owned'&&s.resale)).sort((x,y)=>(x.name||'').localeCompare(y.name||'','es'));
+  if(!l.length){toast('No hay ventas ni sets para vender');return}
+  csvDown(`ventas-${dStr}.csv`,['Número','Nombre','Estado','Pagado','Precio de venta','Precio previsto','Beneficio','Beneficio previsto','Fecha de venta'],
+    l.map(s=>{const sold=s.status==='sold',b=sold&&s.salePrice!=null&&s.paid!=null?+(s.salePrice-s.paid).toFixed(2):null,base=s.paid!=null?s.paid:s.rrp,pb=!sold&&s.potPrice!=null&&base!=null?+(s.potPrice-base).toFixed(2):null;
+      return [s.setNumber,s.name,sold?'Vendido':'Para vender',csvN(s.paid),csvN(sold?s.salePrice:null),csvN(sold?null:s.potPrice),csvN(b),csvN(pb),sold?s.saleDate:'']}))}
+async function expParts(){
+  const c=await ptLoad(),m=new Map();let n=0;
+  for(const s of sets){if(s.status!=='owned')continue;const d=c.get(snKey(s));if(!d)continue;n++;
+    for(const p of d.p){const k=p[0]+'|'+p[2];let o=m.get(k);if(!o){o={ref:p[0],name:p[1],cid:p[2],cn:p[3],q:0,free:0,sets:new Set()};m.set(k,o)}
+      o.q+=p[5];if(!s.built&&!s.building)o.free+=p[5];o.sets.add(s.name||s.setNumber)}}
+  if(!n){toast('Aún no hay piezas cargadas. Cárgalas en Cajón');return}
+  const l=[...m.values()].sort((x,y)=>String(x.ref).localeCompare(String(y.ref),'es',{numeric:true})||String(x.cid).localeCompare(String(y.cid),'es',{numeric:true}));
+  csvDown(`piezas-que-tengo-${dStr}.csv`,['Pieza','Nombre','Color (id)','Color','Cantidad total','En sets sin montar','Sets'],l.map(o=>[o.ref,o.name,o.cid,o.cn,o.q,o.free,[...o.sets].join(' | ')]))}
+$('x-coll').addEventListener('click',expColl);$('x-sales').addEventListener('click',expSales);$('x-parts').addEventListener('click',expParts);
+/* completar PVP vacíos con Brickset (precio de Alemania, en euros) */
+$('x-rrp').addEventListener('click',async()=>{
+  const k=keys().bs,out=$('x-rrp-msg');if(!k){out.textContent='Hace falta la clave de Brickset (Avanzado).';return}
+  const todo=sets.filter(s=>s.rrp==null&&s.setNumber&&s.status!=='sold');
+  if(!todo.length){out.textContent='Todos tus sets ya tienen PVP.';return}
+  $('x-rrp').disabled=true;let ok=0,none=0,err=null;
+  try{
+    for(let i=0;i<todo.length;i+=20){const part=todo.slice(i,i+20),want=part.map(s=>/-\d+$/.test(s.setNumber)?s.setNumber:s.setNumber+'-1');
+      out.textContent=`Consultando ${Math.min(i+20,todo.length)} de ${todo.length}…`;
+      const res=await bsQuery({setNumber:want.join(',')},k),by=new Map(res.map(x=>[x.setNumber.replace(/-1$/,''),x]));
+      for(const s of part){const x=by.get(s.setNumber.replace(/-1$/,''));
+        if(x&&x.rrp!=null){try{await fb.setDoc(fb.doc(db,'bricks',s.id),{rrp:x.rrp,updatedAt:fb.serverTimestamp()},{merge:true});ok++}catch{err='guardar'}}else none++}}
+  }catch(e){err=e.status===401?'La clave de Brickset no es válida.':'No se pudo consultar Brickset.'}
+  $('x-rrp').disabled=false;
+  out.textContent=(err&&err!=='guardar'?err+' ':'')+`PVP completado en ${ok} set${ok===1?'':'s'}${none?`; ${none} sin precio en euros en Brickset (escríbelo a mano)`:''}.`});
+
+/* ---------- piezas destacadas: la más popular y la más rara de tu colección (nº de sets en Rebrickable) ---------- */
+const RAR_K='bricks-rarity',RAR={p:null,run:false};
+const rarGet=()=>{try{const j=JSON.parse(LS.get(RAR_K,'{}'))||{};return{n:j.n||{},d:j.d||{}}}catch{return{n:{},d:{}}}};
+async function ownedAgg(){
+  const c=await ptLoad(),m=new Map();
+  for(const s of sets){if(s.status!=='owned')continue;const d=c.get(snKey(s));if(!d)continue;
+    for(const p of d.p){const k=p[0]+'|'+p[2];let o=m.get(k);if(!o){o={k,part:String(p[0]),name:p[1],col:String(p[2]),cn:p[3],rgb:p[4],img:p[6]||'',q:0};m.set(k,o)}o.q+=p[5];if(!o.img&&p[6])o.img=p[6]}}
+  return m}
+async function rarCalc(){
+  const k=keys().rb;if(!k||RAR.run)return;RAR.run=true;
+  const m=await ownedAgg(),R=rarGet(),want=new Set([...m.values()].map(o=>o.part)),todo=[...want].filter(p=>!R.d[p]);
+  RAR.p={n:0,t:todo.length};renderRare();let fail=0;
+  for(const part of todo){
+    try{const j=await rbGet(`/lego/parts/${encodeURIComponent(part)}/colors/?page_size=1000`,k);
+      for(const x of j.results||[]){const key=part+'|'+x.color_id;if(m.has(key))R.n[key]=x.num_sets}
+      R.d[part]=1}
+    catch(e){if(e&&e.status===404)R.d[part]=1;else{fail++;if(fail>=3)break}}
+    RAR.p.n++;if(RAR.p.n%10===0){LS.set(RAR_K,JSON.stringify(R));renderRare()}}
+  LS.set(RAR_K,JSON.stringify(R));RAR.p=null;RAR.run=false;renderRare();if(fail)toast('Cálculo detenido: puedes reanudarlo')}
+async function renderRare(){
+  const box=$('home-rare');if(!box||curTab!=='home')return;
+  const m=await ownedAgg();if(!m.size){box.classList.add('hidden');return}
+  const R=rarGet(),all=[...m.values()],withN=all.filter(o=>R.n[o.k]!=null);
+  const most=[...all].sort((x,y)=>y.q-x.q)[0];
+  const card=(t,o,why)=>`<div class="rcard"><div class="rt">${t}</div><div class="rim">${o.img?`<img src="${esc(o.img.replace(/^http:\/\//i,'https://'))}" alt="" loading="lazy">`:''}</div><b>${esc(o.part)}</b><div class="rn">${esc(o.name||'')}</div><div class="pcol"><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(o.rgb||'')?'#'+o.rgb:'#ddd'}"></i>${esc(o.cn||'Color '+o.col)}</div><div class="rq">Tienes ${num(o.q)} unidad${o.q===1?'':'es'}</div><small>${why}</small></div>`;
+  let body='';
+  if(withN.length){
+    const pop=[...withN].sort((x,y)=>R.n[y.k]-R.n[x.k]||y.q-x.q)[0],rare=[...withN].sort((x,y)=>R.n[x.k]-R.n[y.k]||y.q-x.q)[0];
+    body=`<div class="rpair">${card('Más popular',pop,`Aparece en ${num(R.n[pop.k])} sets`)}${card('Más rara',rare,`Aparece en ${num(R.n[rare.k])} set${R.n[rare.k]===1?'':'s'}`)}</div>`;
+    if(withN.length<all.length)body+=`<div class="note">Calculado con ${num(withN.length)} de ${num(all.length)} piezas (referencia y color).</div>`}
+  const k=keys().rb;
+  const act=RAR.p?`<div class="note">Calculando… ${RAR.p.n} de ${RAR.p.t} referencias. Tarda un poco: hay un límite de peticiones.</div>`
+    :(!k?'<div class="note">Para ver la más popular y la más rara hace falta la clave de Rebrickable (Ajustes, Avanzado).</div>'
+    :(withN.length<all.length?`<div class="row" style="margin-top:8px"><button class="btn sec small" data-rarcalc="1">${withN.length?'Seguir calculando':'Calcular popular y rara'}</button></div>`:''));
+  box.classList.remove('hidden');
+  box.innerHTML=`<h3>Piezas destacadas</h3>${body}<div class="kv"><span>La que más tienes</span><b>${esc(most.part)} · ${esc(most.cn||'')} · ×${num(most.q)}</b></div>${act}`}
+$('home-rare').addEventListener('click',e=>{if(e.target.closest('[data-rarcalc]'))rarCalc()});

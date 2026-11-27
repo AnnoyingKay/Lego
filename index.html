@@ -46,6 +46,7 @@
       <div id="offline" class="chip warn hidden">Copia sin conexión</div>
       <div class="tiles" id="tiles"></div>
       <div class="card" id="home-money"></div>
+      <div class="card hidden" id="home-rare"></div>
       <div class="card hidden" id="home-recent"><h3>Últimos añadidos</h3><div class="strip" id="recent"></div></div>
     </div>
   </section>
@@ -106,6 +107,14 @@
         <h3>Pantalla</h3>
         <select id="s-layout" aria-label="Diseño de pantalla"><option value="auto">Automático (según el tamaño)</option><option value="phone">Móvil</option><option value="tablet">Tablet</option><option value="desktop">Ordenador</option></select>
         <div class="note">Cambia cuántas columnas y qué ancho usa la app.</div>
+      </div>
+      <div class="card">
+        <h3>Exportar a Excel (CSV)</h3>
+        <div class="row"><button class="btn sec" id="x-coll">Colección</button><button class="btn sec" id="x-sales">Ventas</button><button class="btn sec" id="x-parts">Piezas que tengo</button></div>
+        <div class="note">Se descargan como CSV con punto y coma y coma decimal, listos para abrir en Excel. Las piezas que necesitas se descargan desde cada creación.</div>
+        <h3 style="margin-top:14px">Precios</h3>
+        <div class="row"><button class="btn sec" id="x-rrp">Completar PVP vacíos</button></div>
+        <div class="note" id="x-rrp-msg">El PVP viene de Brickset, que solo tiene el de EE. UU., Reino Unido, Canadá y Alemania. Se usa el de Alemania (euros).</div>
       </div>
       <div class="card">
         <h3>Sincronización</h3>

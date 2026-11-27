@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.17.0
+Version: 1.18.0
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.17.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.18.0", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -31,6 +31,8 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.18.0 (2026-11-27): Inicio: money cards (paid, saving vs RRP with %, sales profit, expected profit, collection price, potential price) keeping resale sets separate. CSV exports (collection, sales, parts I have, parts I need per creation). Inicio: highlighted pieces card (most popular and rarest piece you own by number of sets in Rebrickable, with image and units; computed on demand with the Rebrickable key and kept on the device). RRP: message explains Brickset only has US/UK/CA/DE prices, and Ajustes can fill empty RRPs in bulk.
+
 1.17.0 (2026-11-26): Creación reads the LEGO Pick a Brick CSV (elementId,quantity). Element numbers are translated to part and colour through the Rebrickable API (needs the Rebrickable key, one request per element, saved on the device so each element is asked once); untranslated ones show as "Elemento NNN" and count as missing.
 
 1.16.0 (2026-11-26): Creación: quick selection of the sets to use (all, only unbuilt, only built); wishlist, gift and resale sets are never included by it.
