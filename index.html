@@ -102,6 +102,8 @@
         <input type="text" id="p-nick" maxlength="24" autocomplete="off" placeholder="Si lo dejas vacío se muestra tu correo">
         <label class="f" for="p-fav">Set favorito</label>
         <select id="p-fav" aria-label="Set favorito"></select>
+        <label class="f">Tema de la tarjeta</label>
+        <div class="cths" id="p-cardtheme"></div>
         <div class="row" style="margin-top:10px"><button class="btn" id="p-pub">Publicar tarjeta</button></div>
         <div class="note" id="p-pubnote"></div>
         <div id="p-cardprev"></div>
@@ -125,6 +127,11 @@
         <h3>Pantalla</h3>
         <select id="s-layout" aria-label="Diseño de pantalla"><option value="auto">Automático (según el tamaño)</option><option value="phone">Móvil</option><option value="tablet">Tablet</option><option value="desktop">Ordenador</option></select>
         <div class="note">Cambia cuántas columnas y qué ancho usa la app.</div>
+      </div>
+      <div class="card">
+        <h3>Novedades y avisos</h3>
+        <div class="row"><button class="btn sec" id="s-news">Ver novedades</button></div>
+        <label class="chk" style="margin-top:10px"><input type="checkbox" id="s-tnotif" checked> Avisarme al conseguir un trofeo</label>
       </div>
       <div class="card">
         <h3>Exportar a Excel (CSV)</h3>
@@ -314,6 +321,8 @@
 </div>
 
 <div id="toast" class="hidden" role="status"></div>
+<div id="tnote" aria-live="polite"></div>
+<div id="pop" class="pop hidden" role="dialog" aria-modal="true" aria-label="Novedades"><div class="popin" id="pop-in"></div></div>
 
 <script type="module" src="app.js"></script>
 </body>

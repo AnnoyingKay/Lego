@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.19.0
+Version: 1.21.0
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js, trophies.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.19.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.21.0", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -21,7 +21,7 @@ Date: 25 November 2026
 Sets live in the collection "bricks". Every set carries addedBy (the signed in user's uid). Profile and shared settings live in "bricksMeta", so "bricks" holds only sets.
 - Sets: setNumber, name, theme, year, pieces, minifigs, rrp (PVP), paid, store, purchaseDate, location, notes, imageUrl (web address only), photo (small JPEG of your own set, optional), status ("wishlist", "owned" or "sold"), built (boolean), building (boolean, being built now), gift (boolean), resale (boolean), potPrice (planned selling price), used (boolean, second hand), salePrice, saleDate
 - bricksMeta/<uid>: name, insidersNumber, cardImage (small JPEG), aspecto
-- bricksCards/<uid>: published collector card (nick, email, built, owned, fav, rare, tdone, tmax, updatedAt). Every allowed account can read all cards; only the owner writes or deletes theirs. Rule to merge into the master rules: `match /bricksCards/{uid} { allow read: if bricksUser(); allow create, update, delete: if bricksUser() && request.auth.uid == uid; }`
+- bricksCards/<uid>: published collector card (nick, email, built, owned, fav, rare, tdone, tmax, theme, updatedAt). Every allowed account can read all cards; only the owner writes or deletes theirs. Rule to merge into the master rules: `match /bricksCards/{uid} { allow read: if bricksUser(); allow create, update, delete: if bricksUser() && request.auth.uid == uid; }`
 - bricksMeta/<uid> also holds nick, favSetId and shareCard
 - bricksMeta/config: bricksetKey, rebrickableKey (shared settings, written from the owner account)
 
@@ -33,6 +33,9 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.21.0 (2026-11-27): Red dot on new trophies (medal and Perfil button). New means level above the one saved in `bricksMeta/<uid>.trophyViewed`; a trophy counts as seen once 60% of its tile has been on screen, and the dots only clear when you leave the Perfil tab (or hide/close the app). First run saves current levels silently. All 8 themes get new header scenes (gradients, layers, details).
+1.20.0 (2026-11-27): Collector card redesign with a theme picker (the card keeps its own theme, published as `theme`) and a rank title from your trophy levels. What's new window (shown once after each update, and again from Ajustes) and trophy notices (a banner when you earn a trophy or level up; the highest level seen is kept in your profile as trophySeen so it never repeats; can be switched off in Ajustes).
+
 1.19.0 (2026-11-27): Perfil: 27 trophies (sets, builds, boxes, pieces, money, sales, drawer, creations, rare pieces) with levels from bronze to diamond, calculated from your data. Perfil: collector card (nickname or email, built and owned sets, favourite set, rarest piece, trophy count) that you publish. New Amigos tab shows the cards of the other users. Needs a new Firestore rule for bricksCards (see Data).
 
 1.18.2 (2026-11-27): Inicio, Piezas destacadas: "La que más tienes" is now a card (image, part data, units) and each of the three cards lists the sets you own it in, with units per set.

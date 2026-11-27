@@ -5,7 +5,7 @@ import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
 import {evalTrophies} from './trophies.js';
 
-const VERSION='1.19.0', VERSION_DATE='2026-11-27';
+const VERSION='1.21.0', VERSION_DATE='2026-11-27';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -61,8 +61,8 @@ async function boot(){
     showOnly('app');startData();go(curTab);
   });
 }
-function stopData(){unsubs.forEach(f=>{try{f()}catch{}});unsubs=[];sets=[];profile={};cfg={};FR.list=[];FR.err=''}
-const FR={list:[],err:''};
+function stopData(){TV.pend={};TV.newIds=[];unsubs.forEach(f=>{try{f()}catch{}});unsubs=[];sets=[];profile={};cfg={};PL.ok=false;ANN.done=false;FR.list=[];FR.err=''}
+const FR={list:[],err:''},PL={ok:false},ANN={done:false};
 function startData(){
   stopData();
   const q=fb.query(fb.collection(db,'bricks'),fb.where('addedBy','==',user.uid));
@@ -73,7 +73,7 @@ function startData(){
     renderAll();
   },err=>{if(err&&err.code==='permission-denied'){denied=true;showOnly('denied')}else toast('Error de sincronización')}));
   unsubs.push(fb.onSnapshot(fb.doc(db,'bricksMeta',user.uid),s=>{
-    profile=s.exists()?s.data():{};
+    profile=s.exists()?s.data():{};if(!s.metadata||!s.metadata.fromCache)PL.ok=true;
     if(profile.aspecto&&profile.aspecto!==aspecto)applyAspecto(profile.aspecto);
     if(curTab==='profile')syncProfile();
     schedulePublish();
@@ -88,6 +88,7 @@ function lastTxt(){const t=Number(LS.get('bricks-lastsync','0'));$('s-last').tex
 let curTab='home';
 function go(t){
   if(t==='add'){openSheet(null);return}
+  if(curTab==='profile'&&t!=='profile')commitViewed();
   curTab=t;['home','lib','wish','parts','moc','friends','profile','settings'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   $('fab').classList.toggle('hidden',!(t==='home'||t==='lib'||t==='wish'));
@@ -409,7 +410,7 @@ function syncProfile(){
   if(a!==$('p-num'))$('p-num').value=profile.insidersNumber||'';
   $('p-delphoto').classList.toggle('hidden',!profile.cardImage);
   if(a!==$('p-nick'))$('p-nick').value=profile.nick||'';
-  favOptions();pubUI();renderMemberPrev();
+  favOptions();pubUI();cardThemes();renderMemberPrev();
 }
 let pT;async function saveProfile(patch){
   try{await fb.setDoc(fb.doc(db,'bricksMeta',user.uid),{...patch,updatedAt:fb.serverTimestamp()},{merge:true})}catch{toast('No se pudo guardar el perfil')}
@@ -625,7 +626,7 @@ $('s-layout').addEventListener('change',e=>{try{localStorage.setItem('bricks-lay
 /* ---------- Creación: ¿puedo montar esto con mis piezas? (guardado en este dispositivo) ---------- */
 const MC={open:null,mode:'strict',busy:false,tr:null};
 const mcList=()=>{try{const v=JSON.parse(LS.get('bricks-moc','[]'));return Array.isArray(v)?v:[]}catch{return[]}};
-const mcSave=l=>LS.set('bricks-moc',JSON.stringify(l));
+const mcSave=l=>{LS.set('bricks-moc',JSON.stringify(l));if(typeof scheduleTrophyCheck==='function')scheduleTrophyCheck()};
 const mcEx=()=>{try{return JSON.parse(LS.get('bricks-moc-sets','{}'))||{}}catch{return{}}};
 /* por defecto no se usan: montados, en proceso, regalos y los de reventa; se puede cambiar set a set */
 /* selección rápida: nunca entran regalos ni reventa; Deseos no cuenta porque no es de tu colección */
@@ -850,19 +851,41 @@ const TUN={paid:' €',save:' €',dear:' €',soldmoney:' €',profit:' €',be
 async function trophyCtx(forCard){
   const c=await ptLoad(),R=rarGet(),vals=Object.values(R.n);
   return{sets,parts:sets.filter(s=>s.status==='owned'&&c.get(snKey(s))).length,moc:mcList().length,rareMin:vals.length?Math.min(...vals):null,hasCard:forCard||!!profile.shareCard,hasFav:!!(profile.favSetId&&sets.some(s=>s.id===profile.favSetId))}}
+/* punto rojo en trofeos nuevos: sale al conseguirlos/subir de nivel; se quita al verlos en pantalla y cambiar de pestaña */
+const TV={pend:{},io:null,newIds:[]};
+const viewedMap=()=>profile&&profile.trophyViewed&&typeof profile.trophyViewed==='object'?profile.trophyViewed:null;
+function navDot(){const b=document.querySelector('#nav button[data-tab="profile"]');if(b)b.classList.toggle('hasnew',TV.newIds.length>0)}
+function watchNew(box){
+  if(TV.io){TV.io.disconnect();TV.io=null}
+  if(!('IntersectionObserver' in window))return;
+  const els=[...box.querySelectorAll('.tro[data-new="1"]')];if(!els.length)return;
+  TV.io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting){TV.pend[e.target.dataset.t]=Number(e.target.dataset.l);TV.io.unobserve(e.target)}},{threshold:.6});
+  els.forEach(el=>TV.io.observe(el))}
+async function commitViewed(){
+  if(TV.io){TV.io.disconnect();TV.io=null}
+  const ids=Object.keys(TV.pend);if(!ids.length)return;
+  const V={...(viewedMap()||{})};ids.forEach(id=>{V[id]=Math.max(V[id]||0,TV.pend[id])});TV.pend={};profile.trophyViewed=V;
+  try{await saveProfile({trophyViewed:V})}catch{}
+  await refreshNew()}
+async function refreshNew(){
+  const V=viewedMap();if(!V){TV.newIds=[];navDot();return}
+  const tr=evalTrophies(await trophyCtx());TV.newIds=tr.filter(t=>t.level>(V[t.id]||0)).map(t=>t.id);navDot()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&curTab==='profile')commitViewed()});
+window.addEventListener('pagehide',()=>{if(curTab==='profile')commitViewed()});
 async function renderTrophies(){
   const box=$('p-trophies');if(!box||curTab!=='profile')return;
-  const tr=evalTrophies(await trophyCtx()),done=tr.reduce((n,t)=>n+t.level,0),tot=tr.reduce((n,t)=>n+t.max,0),got=tr.filter(t=>t.level>0).length;
+  const tr=evalTrophies(await trophyCtx()),V=viewedMap(),done=tr.reduce((n,t)=>n+t.level,0),tot=tr.reduce((n,t)=>n+t.max,0),got=tr.filter(t=>t.level>0).length;
   let g='',out=`<div class="tsum"><b>${got}</b> de ${tr.length} trofeos con medalla · <b>${done}</b> de ${tot} niveles</div><div class="bar2"><i style="width:${(done/tot*100).toFixed(1)}%"></i></div>`;
   for(const t of tr){
     if(t.g!==g){g=t.g;out+=`<h4 class="mch">${esc(g)}</h4>`}
     const col=t.level?(t.max===1?TCOL[2]:TCOL[Math.min(t.level,5)-1]):'#d9d6cc',u=TUN[t.id]||'';
     const val=t.inv?(t.value==null?'Sin calcular: abre Inicio, Piezas destacadas':`Tu pieza más rara aparece en ${num(t.value)} set${t.value===1?'':'s'}`+(t.next!=null?` · siguiente: ${num(t.next)} o menos`:'')):
       (t.next!=null?`${num(t.value)}${u} / ${num(t.next)}${u}`:`${num(t.value)}${u} · completo`);
-    out+=`<div class="tro ${t.level?'on':''}"><div class="med" style="background:${col}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIC[t.ic]||TIC.star}</svg></div>
+    const isNew=!!V&&t.level>(V[t.id]||0);
+    out+=`<div class="tro ${t.level?'on':''}" data-t="${t.id}" data-l="${t.level}" data-new="${isNew?1:0}"><div class="med" style="background:${col}">${isNew?'<i class="rd" aria-label="Nuevo"></i>':''}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIC[t.ic]||TIC.star}</svg></div>
       <div class="tt"><b>${esc(t.name)}</b>${t.level?` <em style="color:${col==='#b8bec7'?'#6b7280':col}">${t.max===1?'Conseguido':TIERS[Math.min(t.level,5)-1]}</em>`:''}<span>${esc(t.desc)}</span>
       <div class="bar2"><i style="width:${t.pct}%"></i></div><small>${val}</small></div></div>`}
-  box.innerHTML=out}
+  box.innerHTML=out;watchNew(box)}
 
 /* ---------- tarjeta de coleccionista (se publica en bricksCards/<uid> para los demás usuarios) ---------- */
 function favOptions(){
@@ -878,17 +901,25 @@ async function memberData(){
   return{nick:(profile.nick||'').trim(),email:user.email||'',built:own.filter(s=>s.built).length,owned:own.length,
     fav:f?{name:f.name||f.setNumber||'',num:f.setNumber||'',img:(f.imageUrl||'').slice(0,300),pieces:f.pieces||null}:null,
     rare:cand?{part:cand.part,name:cand.name||'',cn:cand.cn||'',rgb:cand.rgb||'',img:(cand.img||'').slice(0,300),n:R.n[cand.k],q:cand.q}:null,
-    tdone:tr.reduce((n,t)=>n+t.level,0),tmax:tr.reduce((n,t)=>n+t.max,0)}}
+    tdone:tr.reduce((n,t)=>n+t.level,0),tmax:tr.reduce((n,t)=>n+t.max,0),theme:THEMES[profile.cardTheme]?profile.cardTheme:(THEMES[aspecto]?aspecto:'lego')}}
+const RANKS=[[0,'Aprendiz de ladrillos'],[.06,'Constructor'],[.16,'Maestro constructor'],[.32,'Gran maestro'],[.5,'Leyenda del ladrillo']];
+const rankOf=c=>{const f=c.tmax?(c.tdone||0)/c.tmax:0;let r=RANKS[0][1];for(const [m,n] of RANKS)if(f>=m)r=n;return r};
+const CUP='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 21h8"/></svg>';
 function memberHTML(c){
-  const nm=(c.nick||'').trim()||c.email||'Sin nombre',ini=nm.trim()[0]?.toUpperCase()||'?';
+  const k=THEMES[c.theme]?c.theme:'lego',t=THEMES[k],nm=(c.nick||'').trim()||c.email||'Sin nombre',ini=nm.trim()[0]?.toUpperCase()||'?';
   const im=u=>u?`<img src="${esc(String(u).replace(/^http:\/\//i,'https://'))}" alt="" loading="lazy">`:'';
-  return `<div class="fcard"><div class="fh"><span class="fav2">${esc(ini)}</span><div class="fn"><b>${esc(nm)}</b><small>${c.nick&&c.email?esc(c.email):''}</small></div><span class="ftr" title="Niveles de trofeos">🏆 ${num(c.tdone||0)}/${num(c.tmax||0)}</span></div>
-   <div class="fst"><div><b>${num(c.built||0)}</b><span>Montados</span></div><div><b>${num(c.owned||0)}</b><span>Poseídos</span></div></div>
-   <div class="fx"><div class="fxt">Set favorito</div>${c.fav?`<div class="fxr"><span class="fim">${im(c.fav.img)}</span><div><b>${esc(c.fav.name)}</b><small>${esc(c.fav.num||'')}${c.fav.pieces?' · '+num(c.fav.pieces)+' piezas':''}</small></div></div>`:'<div class="fxn">Sin elegir</div>'}</div>
+  const vars=`--hd:${t.hd};--ink:${t.ink};--ac:${t.ac};--bg:${t.bg};--t1:${t.tile[0]};--t2:${t.tile[1]};--t3:${t.tile[2]};--t4:${t.tile[3]}`;
+  const pct=c.tmax?Math.min(100,Math.round((c.tdone||0)/c.tmax*100)):0;
+  return `<div class="fcard" data-theme="${k}" style="${vars}"><div class="fart">${artSvg(k,'Tema '+t.label)}</div>
+   <div class="fhd"><span class="fav2">${esc(ini)}</span><div class="fn"><b>${esc(nm)}</b><small>${c.nick&&c.email?esc(c.email):''}</small></div></div>
+   <div class="frk"><span>${CUP}${esc(rankOf(c))}</span><div class="frb"><i style="width:${pct}%"></i></div></div>
+   <div class="fst"><div><b>${num(c.built||0)}</b><span>Montados</span></div><div><b>${num(c.owned||0)}</b><span>Poseídos</span></div><div><b>${num(c.tdone||0)}</b><span>de ${num(c.tmax||0)} niveles</span></div></div>
+   <div class="fx"><div class="fxt">Set favorito</div>${c.fav?`<div class="fxr"><span class="fim big">${im(c.fav.img)}</span><div><b>${esc(c.fav.name)}</b><small>${esc(c.fav.num||'')}${c.fav.pieces?' · '+num(c.fav.pieces)+' piezas':''}</small></div></div>`:'<div class="fxn">Sin elegir</div>'}</div>
    <div class="fx"><div class="fxt">Pieza más rara</div>${c.rare?`<div class="fxr"><span class="fim">${im(c.rare.img)}</span><div><b>${esc(c.rare.part)} · ${esc(c.rare.name)}</b><small><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(c.rare.rgb||'')?'#'+c.rare.rgb:'#ddd'}"></i> ${esc(c.rare.cn||'')} · en ${num(c.rare.n)} set${c.rare.n===1?'':'s'} · tiene ${num(c.rare.q)}</small></div></div>`:'<div class="fxn">Sin calcular</div>'}</div></div>`}
 async function renderMemberPrev(){const box=$('p-cardprev');if(!box||curTab!=='profile')return;box.innerHTML='<div class="fxt" style="margin:8px 0 4px">Así te ven</div>'+memberHTML(await memberData())}
 let pubT,pubLast='';
 function schedulePublish(){
+  scheduleTrophyCheck();maybeAnnounce();
   if(!user||!profile.shareCard)return;
   clearTimeout(pubT);pubT=setTimeout(async()=>{
     try{const d=await memberData(),j=JSON.stringify(d);if(j===pubLast&&j===LS.get('bricks-card-last'+user.uid,''))return;
@@ -908,3 +939,61 @@ function renderFriends(){
   if(FR.err){box.innerHTML='<div class="empty">No se pudieron cargar las tarjetas. Inténtalo de nuevo.</div>';return}
   const l=[...FR.list].sort((x,y)=>((x.nick||x.email||'')).localeCompare((y.nick||y.email||''),'es'));
   box.innerHTML=l.length?l.map(memberHTML).join(''):'<div class="empty">Todavía no hay tarjetas de amigos. Cuando alguien publique la suya desde Perfil, aparecerá aquí.</div>'}
+
+/* ---------- novedades y avisos de trofeos ---------- */
+const WHATS_NEW=[
+ {v:'1.21.0',t:'Puntito rojo y temas nuevos',items:['Los trofeos nuevos llevan un punto rojo. Se quita cuando los has visto en pantalla y cambias de pestaña.','Los 8 aspectos tienen cabeceras con más escena, colores y fondos renovados.']},
+ {v:'1.20.0',t:'Novedades y avisos de trofeos',items:['Al conseguir un trofeo o subir de nivel te sale un aviso arriba. Se puede apagar en Ajustes.','Esta ventana de novedades sale cuando la app se actualiza, y la puedes volver a ver desde Ajustes.']},
+ {v:'1.19.0',t:'Trofeos, tarjeta y Amigos',items:['27 trofeos con niveles de bronce a diamante, en Perfil.','Tarjeta de coleccionista: apodo, set favorito, montados, poseídos y tu pieza más rara. Tú decides si la publicas.','Nueva pestaña Amigos con las tarjetas de los demás.']},
+ {v:'1.18.0',t:'Dinero, exportaciones y piezas destacadas',items:['Inicio: seis tarjetas de dinero con colores (pagado, ahorro, beneficio de ventas, precio de la colección y potencial).','Exportar a Excel (CSV): colección, ventas, piezas que tengo y piezas que necesito.','Piezas destacadas: la más popular, la más rara y la que más tienes, con los sets donde están.','Ajustes: botón para completar los PVP vacíos con Brickset.']},
+ {v:'1.17.0',t:'CSV de Pick a Brick',items:['Creación lee el CSV de Pick a Brick de LEGO (elementId) y lo traduce a pieza y color con Rebrickable.']},
+ {v:'1.16.0',t:'Selección rápida de sets',items:['Creación: botones Todos, Solo desmontados y Solo montados para elegir qué sets usar.']},
+ {v:'1.15.0',t:'Creaciones guardadas',items:['Creación: las creaciones guardadas salen como tarjetas con los dos porcentajes. Limpiar solo vacía la pantalla.']},
+ {v:'1.14.0',t:'Creación',items:['Nueva pestaña Creación: importa .io de Studio, CSV de Rebrickable o XML de BrickLink y mira qué porcentaje puedes montar con tus piezas.']}];
+const vcmp=(x,y)=>{const p=String(x).split('.').map(Number),q=String(y).split('.').map(Number);for(let i=0;i<3;i++){const d=(p[i]||0)-(q[i]||0);if(d)return d}return 0};
+const POP={open:false,q:[]};
+function popShow(html){POP.q.push(html);popNext()}
+function popNext(){if(POP.open||!POP.q.length)return;POP.open=true;$('pop-in').innerHTML=POP.q.shift();$('pop').classList.remove('hidden');$('pop-in').scrollTop=0;const b=$('pop-in').querySelector('[data-pop]');if(b)b.focus()}
+function popClose(){$('pop').classList.add('hidden');POP.open=false;setTimeout(popNext,150)}
+$('pop').addEventListener('click',e=>{if(e.target.closest('[data-pop]')||e.target===$('pop'))popClose()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&POP.open)popClose()});
+const newsHTML=l=>`<h3>Novedades</h3>${l.map(w=>`<div class="nw"><div class="nwh"><b>${esc(w.t)}</b><span>v${esc(w.v)}</span></div><ul>${w.items.map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}<div class="row" style="margin-top:12px"><button class="btn" data-pop="1">Entendido</button></div>`;
+function maybeAnnounce(){
+  if(ANN.done||!user||!PL.ok)return;ANN.done=true;
+  const seen=LS.get('bricks-seen-v','');if(seen===VERSION)return;
+  LS.set('bricks-seen-v',VERSION);
+  const l=WHATS_NEW.filter(w=>!seen||vcmp(w.v,seen)>0).slice(0,3);if(l.length)popShow(newsHTML(l))}
+$('s-news').addEventListener('click',()=>popShow(newsHTML(WHATS_NEW.slice(0,3))));
+/* aviso de trofeos: arriba, no bloquea; se guarda el nivel máximo visto en tu perfil para que no se repita */
+const TN=()=>LS.get('bricks-tnotif','on')!=='off';
+function trophyNote(ups){
+  if(!TN())return;
+  const box=$('tnote'),show=ups.slice(0,3);
+  for(const {t} of show){
+    const col=t.max===1?TCOL[2]:TCOL[Math.min(t.level,5)-1],lv=t.max===1?'Conseguido':TIERS[Math.min(t.level,5)-1],el=document.createElement('button');
+    el.type='button';el.className='tn';
+    el.innerHTML=`<span class="med" style="background:${col}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${TIC[t.ic]||TIC.star}</svg></span><span class="tt"><small>${t.level>1?'¡Subes de nivel!':'¡Nuevo trofeo!'}</small><b>${esc(t.name)} · ${esc(lv)}</b><span>${esc(t.desc)}</span></span>`;
+    el.addEventListener('click',()=>{el.remove();go('profile')});
+    box.appendChild(el);setTimeout(()=>el.remove(),8000)}
+  if(ups.length>show.length){const m=document.createElement('div');m.className='tn tnm';m.textContent=`y ${ups.length-show.length} más en Perfil`;box.appendChild(m);setTimeout(()=>m.remove(),8000)}}
+let chkT,chkRun=false;
+function scheduleTrophyCheck(){clearTimeout(chkT);chkT=setTimeout(checkTrophies,1500)}
+async function checkTrophies(){
+  if(!user||!PL.ok||chkRun)return;chkRun=true;
+  try{
+    const tr=evalTrophies(await trophyCtx()),seen=profile.trophySeen,cur={};tr.forEach(t=>{cur[t.id]=t.level});
+    if(!viewedMap()){profile.trophyViewed={...cur};await saveProfile({trophyViewed:cur})}
+    if(!seen||typeof seen!=='object'){await saveProfile({trophySeen:cur});await refreshNew();return}
+    const ups=[],nx={...seen};
+    for(const t of tr){const o=seen[t.id]||0;if(t.level>o){ups.push({t});nx[t.id]=t.level}else if(nx[t.id]==null)nx[t.id]=t.level}
+    if(ups.length){await saveProfile({trophySeen:nx});trophyNote(ups)}
+    await refreshNew();if(curTab==='profile'&&ups.length)renderTrophies();
+  }catch{}finally{chkRun=false}}
+$('s-tnotif').addEventListener('change',()=>{LS.set('bricks-tnotif',$('s-tnotif').checked?'on':'off')});
+$('s-tnotif').checked=TN();
+
+/* tema de la tarjeta: elige el estilo con el que te ven los demás (independiente del aspecto de tu app) */
+function cardThemes(){
+  const cur=THEMES[profile.cardTheme]?profile.cardTheme:(THEMES[aspecto]?aspecto:'lego');
+  $('p-cardtheme').innerHTML=ORDER.map(k=>`<button type="button" class="cth ${k===cur?'on':''}" data-ct="${k}" aria-pressed="${k===cur}" style="background:${THEMES[k].hd};color:${THEMES[k].ink}"><span>${esc(THEMES[k].label)}</span></button>`).join('')}
+$('p-cardtheme').addEventListener('click',e=>{const b=e.target.closest('[data-ct]');if(!b)return;profile.cardTheme=b.dataset.ct;cardThemes();renderMemberPrev();saveProfile({cardTheme:b.dataset.ct});schedulePublish()});
