@@ -312,3 +312,34 @@ nav button{font-size:10px}
 @keyframes rdp{70%{box-shadow:0 0 0 6px rgba(225,29,46,0)}100%{box-shadow:0 0 0 0 rgba(225,29,46,0)}}
 nav button{position:relative}nav button.hasnew:after{content:"";position:absolute;top:6px;left:calc(50% + 6px);width:10px;height:10px;border-radius:50%;background:#e11d2e;border:2px solid #fff}
 @media (prefers-reduced-motion:reduce){.rd{animation:none}}
+
+.playbtn{position:fixed;left:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:6;display:flex;align-items:center;gap:6px;border:0;background:var(--ac);color:#fff;font-weight:700;font-size:15px;padding:12px 16px;border-radius:99px;box-shadow:0 3px 8px rgba(0,0,0,.28)}
+.playbtn:active{transform:scale(.95)}
+.play{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;overflow-y:auto}
+.phd{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--hd);position:sticky;top:0;z-index:2}
+.phd button{border:0;background:rgba(255,255,255,.55);width:38px;height:38px;border-radius:50%;font-size:24px;line-height:1}
+.phd b{font-size:18px}
+.plbody{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 12px 18px;gap:8px}
+.plsub{color:var(--mut);margin:4px 0;text-align:center}
+.plmenu{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:460px}
+.plcard{background:#fff;border:var(--bw) solid var(--line);border-radius:var(--rad);padding:12px 10px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.plcard svg{width:44px;height:44px}.plcard b{font-size:15px}.plcard span{font-size:12px;color:var(--mut);line-height:1.3}.plcard em{font-style:normal;font-size:11px;color:var(--ac);font-weight:600}
+.plcv{touch-action:none;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.25);max-width:100%;user-select:none;-webkit-user-select:none}
+.plcv.shake{animation:shk .25s}@keyframes shk{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.plinfo{font-size:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;min-height:30px}
+.plinfo canvas{background:#1f2430;border-radius:6px;width:60px;height:30px}
+.plbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;max-width:460px}
+.plbtns button{flex:1 1 0;min-width:52px;border:0;background:var(--ac);color:#fff;font-size:18px;font-weight:700;padding:12px 6px;border-radius:var(--rad)}
+.plbtns button:active{filter:brightness(.85)}
+.pltray{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:460px}
+.pit{border:2px solid var(--line);background:#fff;border-radius:10px;padding:6px;display:flex;align-items:center;justify-content:center;min-width:56px;min-height:56px}
+.pit.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--ac)}.pit.used{opacity:.3}
+.plend{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:3}
+.plend>div{background:#fff;border-radius:16px;padding:20px 26px;text-align:center;max-width:280px}
+.plend h3{margin:0 0 6px}.plend p{margin:0 0 14px}
+.plagain{border:0;background:var(--ac);color:#fff;font-weight:700;font-size:16px;padding:12px 22px;border-radius:99px}
+body.noscroll{overflow:hidden}
+[data-layout=desktop] .playbtn{left:calc(96px + 12px);bottom:20px}
+
+.hn{color:#15803d;font-weight:700}.hm{font-weight:400}
+.plintro{position:fixed;z-index:45}.plintro>div{max-width:320px;text-align:left}.plhow{font-size:14px;line-height:1.4}.plhow ul{padding-left:18px;margin:6px 0}.plhow p{margin:6px 0}.plintro .plagain{display:block;margin:10px auto 0}.plintro h3{text-align:center}

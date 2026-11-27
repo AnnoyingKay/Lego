@@ -4,8 +4,10 @@ import {themeIcon} from './themeicons.js';
 import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
 import {evalTrophies} from './trophies.js';
+import {openPlay,initPlay} from './games.js';
+import {HISTORY,FIRST} from './history.js';
 
-const VERSION='1.21.0', VERSION_DATE='2026-11-27';
+const VERSION='1.23.0', VERSION_DATE='2026-11-27';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -91,10 +93,11 @@ function go(t){
   if(curTab==='profile'&&t!=='profile')commitViewed();
   curTab=t;['home','lib','wish','parts','moc','friends','profile','settings'].forEach(x=>$('v-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
-  $('fab').classList.toggle('hidden',!(t==='home'||t==='lib'||t==='wish'));
+  $('fab').classList.toggle('hidden',!(t==='home'||t==='lib'||t==='wish'));$('playbtn').classList.toggle('hidden',t!=='home');
   if(t==='parts')renderParts();if(t==='moc')renderMoc();if(t==='friends')renderFriends();if(t==='profile'){syncProfile();renderTrophies()}if(t==='settings')settingsInit();
   window.scrollTo(0,0);renderAll();
 }
+initPlay();$('playbtn').addEventListener('click',openPlay);
 $('nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.tab)});
 
 /* ---------- datos derivados ---------- */
@@ -942,6 +945,8 @@ function renderFriends(){
 
 /* ---------- novedades y avisos de trofeos ---------- */
 const WHATS_NEW=[
+ {v:'1.23.0',t:'Ayuda de juegos e historial',items:['Cada juego de Playtime! explica cómo se juega la primera vez que lo abres. El botón ? lo repite.','Ajustes tiene un Historial de versiones: fecha de primera publicación y cambios de cada versión. En verde y negrita lo nuevo.']},
+ {v:'1.22.0',t:'Playtime! (prueba)',items:['Nuevo botón Playtime! abajo a la izquierda en Inicio con 4 minijuegos de ladrillos: Brick Drop, Encaja la silueta, Torre y Clasificador.','Los récords se guardan solo en este dispositivo.']},
  {v:'1.21.0',t:'Puntito rojo y temas nuevos',items:['Los trofeos nuevos llevan un punto rojo. Se quita cuando los has visto en pantalla y cambias de pestaña.','Los 8 aspectos tienen cabeceras con más escena, colores y fondos renovados.']},
  {v:'1.20.0',t:'Novedades y avisos de trofeos',items:['Al conseguir un trofeo o subir de nivel te sale un aviso arriba. Se puede apagar en Ajustes.','Esta ventana de novedades sale cuando la app se actualiza, y la puedes volver a ver desde Ajustes.']},
  {v:'1.19.0',t:'Trofeos, tarjeta y Amigos',items:['27 trofeos con niveles de bronce a diamante, en Perfil.','Tarjeta de coleccionista: apodo, set favorito, montados, poseídos y tu pieza más rara. Tú decides si la publicas.','Nueva pestaña Amigos con las tarjetas de los demás.']},
@@ -963,6 +968,9 @@ function maybeAnnounce(){
   const seen=LS.get('bricks-seen-v','');if(seen===VERSION)return;
   LS.set('bricks-seen-v',VERSION);
   const l=WHATS_NEW.filter(w=>!seen||vcmp(w.v,seen)>0).slice(0,3);if(l.length)popShow(newsHTML(l))}
+const dfmt=d=>new Date(d+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+function histHTML(){return `<h3>Historial de versiones</h3><p class="note">Primera publicación: <b>${dfmt(FIRST.d)}</b> (v${FIRST.v}). <span class="hn">Verde y negrita</span> = novedad. Texto normal = cambio en algo que ya existía.</p>`+HISTORY.map(h=>`<div class="nw"><div class="nwh"><b>v${esc(h.v)}</b><span>${dfmt(h.d)}</span></div><ul>${h.i.map(i=>`<li class="${i[0]==='n'?'hn':'hm'}">${esc(i[1])}</li>`).join('')}</ul></div>`).join('')+'<div class="row" style="margin-top:12px"><button class="btn" data-pop>Cerrar</button></div>'}
+$('s-hist').addEventListener('click',()=>popShow(histHTML()));
 $('s-news').addEventListener('click',()=>popShow(newsHTML(WHATS_NEW.slice(0,3))));
 /* aviso de trofeos: arriba, no bloquea; se guarda el nivel máximo visto en tu perfil para que no se repita */
 const TN=()=>LS.get('bricks-tnotif','on')!=='off';

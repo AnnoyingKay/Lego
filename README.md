@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.21.0
+Version: 1.23.0
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js, trophies.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.21.0", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.23.0", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -33,6 +33,8 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.23.0 (2026-11-27): Playtime! shows how to play each game the first time it is opened (seen flags in localStorage `bricks-play-intro`; ? button in the header repeats it). Ajustes: Historial de versiones window from `history.js` with the first publish date and the changes of every version (new = green bold, change to something existing = normal). Add each new version to `history.js`.
+1.22.0 (2026-11-27): Playtime! (test): button bottom left on Inicio opening 4 mini games in `games.js` (Brick Drop, Encaja la silueta, Torre, Clasificador). Best scores kept in localStorage `bricks-play-best` (this device only). games.js is in the service worker CORE list.
 1.21.0 (2026-11-27): Red dot on new trophies (medal and Perfil button). New means level above the one saved in `bricksMeta/<uid>.trophyViewed`; a trophy counts as seen once 60% of its tile has been on screen, and the dots only clear when you leave the Perfil tab (or hide/close the app). First run saves current levels silently. All 8 themes get new header scenes (gradients, layers, details).
 1.20.0 (2026-11-27): Collector card redesign with a theme picker (the card keeps its own theme, published as `theme`) and a rank title from your trophy levels. What's new window (shown once after each update, and again from Ajustes) and trophy notices (a banner when you earn a trophy or level up; the highest level seen is kept in your profile as trophySeen so it never repeats; can be switched off in Ajustes).
 

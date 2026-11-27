@@ -130,7 +130,7 @@
       </div>
       <div class="card">
         <h3>Novedades y avisos</h3>
-        <div class="row"><button class="btn sec" id="s-news">Ver novedades</button></div>
+        <div class="row"><button class="btn sec" id="s-news">Ver novedades</button><button class="btn sec" id="s-hist">Historial de versiones</button></div>
         <label class="chk" style="margin-top:10px"><input type="checkbox" id="s-tnotif" checked> Avisarme al conseguir un trofeo</label>
       </div>
       <div class="card">
@@ -322,6 +322,8 @@
 
 <div id="toast" class="hidden" role="status"></div>
 <div id="tnote" aria-live="polite"></div>
+<button id="playbtn" class="playbtn hidden" type="button"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="9" rx="2"/><circle cx="8" cy="8" r="2"/><circle cx="16" cy="8" r="2"/></svg>Playtime!</button>
+<div id="play" class="play hidden" role="dialog" aria-modal="true" aria-label="Playtime"><div class="phd"><button id="pl-back" type="button" aria-label="Atrás" data-m="close">‹</button><b id="pl-title">Playtime!</b><button id="pl-help" class="hidden" type="button" aria-label="Cómo se juega" style="margin-left:auto;font-size:20px;font-weight:700">?</button></div><div id="pl-body" class="plbody"></div></div>
 <div id="pop" class="pop hidden" role="dialog" aria-modal="true" aria-label="Novedades"><div class="popin" id="pop-in"></div></div>
 
 <script type="module" src="app.js"></script>
