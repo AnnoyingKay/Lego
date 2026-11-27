@@ -4,7 +4,7 @@ import {themeIcon} from './themeicons.js';
 import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
 
-const VERSION='1.18.0', VERSION_DATE='2026-11-27';
+const VERSION='1.18.1', VERSION_DATE='2026-11-27';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -126,14 +126,21 @@ function renderHome(){
   const ba=own.filter(s=>s.rrp!=null&&s.paid!=null),svA=sum(ba,s=>s.rrp-s.paid),rpA=sum(ba,s=>s.rrp),svAP=rpA?svA/rpA*100:null;
   const pct=n=>n==null?'—':n.toFixed(1).replace('.',',')+' %';
   const net=paidOwn-ben,netPot=net-potB;
-  const mc=(l,v,sub)=>`<div class="mnyc"><span>${l}</span><b>${v}</b>${sub?`<small>${sub}</small>`:''}</div>`;
+  const IC=p=>`<svg class="mic" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const ICS={paid:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.3"/>',
+    save:'<path d="M5 12a7 6 0 0 1 12-3.5h2v3l-1.5 1V16h-3l-.5 1.5h-3L10 16H8l-1.5-1.5"/><path d="M5 11H3.5"/><path d="M12 5.5v-2"/><circle cx="15.5" cy="11" r=".6"/>',
+    sold:'<circle cx="12" cy="12" r="8.5"/><path d="M12 16.5V8m-3.5 3.5L12 8l3.5 3.5"/>',
+    pot:'<path d="M7 3h10M7 21h10"/><path d="M8 3c0 5 8 5 8 9s-8 4-8 9"/><path d="M16 3c0 5-8 5-8 9s8 4 8 9" opacity=".5"/>',
+    price:'<path d="M3 12V4.5A1.5 1.5 0 0 1 4.5 3H12l9 9-8.5 8.5z"/><circle cx="8" cy="8" r="1.4"/>',
+    pots:'<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/>'};
+  const mc=(l,v,sub,k,cls)=>`<div class="mnyc ${cls}"><span>${l}</span>${IC(ICS[k])}<b>${v}</b>${sub?`<small>${sub}</small>`:''}</div>`;
   $('home-money').innerHTML=`<h3>Cuentas</h3><div class="mny">`
-   +mc('Pagado por tu colección',money(paidColl),sc.length?`Para vender: ${money(paidRes)} · todo: ${money(paidOwn)}`:'')
-   +mc('Ahorro frente al PVP',money(svC),`${pct(svP)} del PVP${sc.length?` · con scalper: ${money(svA)} (${pct(svAP)})`:''}`)
-   +mc('Beneficio de ventas',money(ben),`${soldAll.length} vendido${soldAll.length===1?'':'s'}`)
-   +mc('Beneficio previsto',money(potB),`${potN} set${potN===1?'':'s'} para vender`)
-   +mc('Precio de la colección',money(net),'Pagado − beneficio de ventas')
-   +mc('Precio potencial',money(netPot),'Pagado − beneficio de ventas − beneficio previsto')
+   +mc('Pagado por tu colección',money(paidColl),sc.length?`Para vender: ${money(paidRes)} · todo: ${money(paidOwn)}`:'','paid','m1')
+   +mc('Ahorro frente al PVP',money(svC),`${pct(svP)} del PVP${sc.length?` · con scalper: ${money(svA)} (${pct(svAP)})`:''}`,'save','m2')
+   +mc('Beneficio de ventas',money(ben),`${soldAll.length} vendido${soldAll.length===1?'':'s'}`,'sold','m3')
+   +mc('Beneficio previsto',money(potB),`${potN} set${potN===1?'':'s'} para vender`,'pot','m4')
+   +mc('Precio de la colección',money(net),'Pagado − beneficio de ventas','price','m5')
+   +mc('Precio potencial',money(netPot),'Pagado − beneficio de ventas − beneficio previsto','pots','m6')
    +`</div>
    <div class="kv"><span>Piezas en tu colección</span><b>${num(pz(c))}</b></div>
    <div class="kv"><span>Minifiguras en tu colección</span><b>${num(sum(c,s=>s.minifigs))}</b></div>
