@@ -4,7 +4,7 @@ import {themeIcon} from './themeicons.js';
 import {parseAny,compare,mergeRows} from './moc.js';
 import {BL2LD,LDN} from './colors.js';
 
-const VERSION='1.18.1', VERSION_DATE='2026-11-27';
+const VERSION='1.18.2', VERSION_DATE='2026-11-27';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:v}catch{return d}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
@@ -795,7 +795,7 @@ const rarGet=()=>{try{const j=JSON.parse(LS.get(RAR_K,'{}'))||{};return{n:j.n||{
 async function ownedAgg(){
   const c=await ptLoad(),m=new Map();
   for(const s of sets){if(s.status!=='owned')continue;const d=c.get(snKey(s));if(!d)continue;
-    for(const p of d.p){const k=p[0]+'|'+p[2];let o=m.get(k);if(!o){o={k,part:String(p[0]),name:p[1],col:String(p[2]),cn:p[3],rgb:p[4],img:p[6]||'',q:0};m.set(k,o)}o.q+=p[5];if(!o.img&&p[6])o.img=p[6]}}
+    for(const p of d.p){const k=p[0]+'|'+p[2];let o=m.get(k);if(!o){o={k,part:String(p[0]),name:p[1],col:String(p[2]),cn:p[3],rgb:p[4],img:p[6]||'',q:0,sets:new Map()};m.set(k,o)}o.q+=p[5];if(!o.img&&p[6])o.img=p[6];const lb=s.name||s.setNumber||'?';o.sets.set(lb,(o.sets.get(lb)||0)+p[5])}}
   return m}
 async function rarCalc(){
   const k=keys().rb;if(!k||RAR.run)return;RAR.run=true;
@@ -813,16 +813,16 @@ async function renderRare(){
   const m=await ownedAgg();if(!m.size){box.classList.add('hidden');return}
   const R=rarGet(),all=[...m.values()],withN=all.filter(o=>R.n[o.k]!=null);
   const most=[...all].sort((x,y)=>y.q-x.q)[0];
-  const card=(t,o,why)=>`<div class="rcard"><div class="rt">${t}</div><div class="rim">${o.img?`<img src="${esc(o.img.replace(/^http:\/\//i,'https://'))}" alt="" loading="lazy">`:''}</div><b>${esc(o.part)}</b><div class="rn">${esc(o.name||'')}</div><div class="pcol"><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(o.rgb||'')?'#'+o.rgb:'#ddd'}"></i>${esc(o.cn||'Color '+o.col)}</div><div class="rq">Tienes ${num(o.q)} unidad${o.q===1?'':'es'}</div><small>${why}</small></div>`;
+  const card=(t,o,why)=>`<div class="rcard"><div class="rt">${t}</div><div class="rim">${o.img?`<img src="${esc(o.img.replace(/^http:\/\//i,'https://'))}" alt="" loading="lazy">`:''}</div><b>${esc(o.part)}</b><div class="rn">${esc(o.name||'')}</div><div class="pcol"><i class="sw" style="background:${/^[0-9a-f]{6}$/i.test(o.rgb||'')?'#'+o.rgb:'#ddd'}"></i>${esc(o.cn||'Color '+o.col)}</div><div class="rq">Tienes ${num(o.q)} unidad${o.q===1?'':'es'}</div><small>${why}</small>${(()=>{const l=[...o.sets].sort((x,y)=>y[1]-x[1]);return `<div class="rsets"><div class="rsh">En ${l.length} set${l.length===1?'':'s'} tuyo${l.length===1?'':'s'}</div>${l.slice(0,6).map(([n,q])=>`<div class="rs"><span>${esc(n)}</span><b>×${num(q)}</b></div>`).join('')}${l.length>6?`<div class="rs"><span>y ${l.length-6} más</span></div>`:''}</div>`})()}</div>`;
   let body='';
   if(withN.length){
     const pop=[...withN].sort((x,y)=>R.n[y.k]-R.n[x.k]||y.q-x.q)[0],rare=[...withN].sort((x,y)=>R.n[x.k]-R.n[y.k]||y.q-x.q)[0];
-    body=`<div class="rpair">${card('Más popular',pop,`Aparece en ${num(R.n[pop.k])} sets`)}${card('Más rara',rare,`Aparece en ${num(R.n[rare.k])} set${R.n[rare.k]===1?'':'s'}`)}</div>`;
+    body=`<div class="rpair">${card('Más popular',pop,`Aparece en ${num(R.n[pop.k])} sets en total`)}${card('Más rara',rare,`Aparece en ${num(R.n[rare.k])} set${R.n[rare.k]===1?'':'s'} en total`)}${card('La que más tienes',most,'Más unidades en tu colección')}</div>`;
     if(withN.length<all.length)body+=`<div class="note">Calculado con ${num(withN.length)} de ${num(all.length)} piezas (referencia y color).</div>`}
   const k=keys().rb;
   const act=RAR.p?`<div class="note">Calculando… ${RAR.p.n} de ${RAR.p.t} referencias. Tarda un poco: hay un límite de peticiones.</div>`
     :(!k?'<div class="note">Para ver la más popular y la más rara hace falta la clave de Rebrickable (Ajustes, Avanzado).</div>'
     :(withN.length<all.length?`<div class="row" style="margin-top:8px"><button class="btn sec small" data-rarcalc="1">${withN.length?'Seguir calculando':'Calcular popular y rara'}</button></div>`:''));
   box.classList.remove('hidden');
-  box.innerHTML=`<h3>Piezas destacadas</h3>${body}<div class="kv"><span>La que más tienes</span><b>${esc(most.part)} · ${esc(most.cn||'')} · ×${num(most.q)}</b></div>${act}`}
+  box.innerHTML=`<h3>Piezas destacadas</h3>${body}${withN.length?'':`<div class="rpair">${card('La que más tienes',most,'Más unidades en tu colección')}</div>`}${act}`}
 $('home-rare').addEventListener('click',e=>{if(e.target.closest('[data-rarcalc]'))rarCalc()});

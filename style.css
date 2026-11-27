@@ -255,3 +255,9 @@ nav button{font-size:10px}
 .mnyc.m4{background:#FFD0CF}.mnyc.m4 .mic{color:#a3201f}
 .mnyc.m5{background:#E6DAFF}.mnyc.m5 .mic{color:#5a3aa0}
 .mnyc.m6{background:#FFDDBE}.mnyc.m6 .mic{color:#a35310}
+
+.rcard{text-align:center}.rcard .rsets{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line);text-align:left}
+.rcard .rsh{font-size:11px;color:var(--mut);margin-bottom:3px}.rcard .rs{display:flex;justify-content:space-between;gap:6px;font-size:12px;line-height:1.35}
+.rcard .rs span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rcard .rs b{font-size:12px;display:inline;flex:none}
+.rpair .rcard:nth-child(3):last-child{grid-column:1/-1}
+[data-layout=desktop] .rpair{grid-template-columns:repeat(3,minmax(0,1fr))}

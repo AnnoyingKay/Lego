@@ -2,13 +2,13 @@
 
 Private LEGO collection app. Spanish interface, one Google sign in per person, each person sees only their own sets.
 
-Version: 1.18.1
+Version: 1.18.2
 Date: 25 November 2026
 
 ## Files
 - index.html, style.css, app.js, themes.js: the app
 - firebase-config.js: paste the Firebase config from the Christmas app (project shelf-b5282)
-- sw.js: service worker, network first, cache name "bricks-v1.18.1", only deletes caches starting "bricks-"
+- sw.js: service worker, network first, cache name "bricks-v1.18.2", only deletes caches starting "bricks-"
 - manifest.webmanifest, icon-192.png, icon-512.png: installable PWA
 
 ## Set up
@@ -31,6 +31,8 @@ Brickset first (set number, name, barcode), Rebrickable as fallback. Both are op
 Data from Brickset and Rebrickable.
 
 ## Changelog
+1.18.2 (2026-11-27): Inicio, Piezas destacadas: "La que más tienes" is now a card (image, part data, units) and each of the three cards lists the sets you own it in, with units per set.
+
 1.18.1 (2026-11-27): Inicio: each money card has its own colour and a small drawing.
 
 1.18.0 (2026-11-27): Inicio: money cards (paid, saving vs RRP with %, sales profit, expected profit, collection price, potential price) keeping resale sets separate. CSV exports (collection, sales, parts I have, parts I need per creation). Inicio: highlighted pieces card (most popular and rarest piece you own by number of sets in Rebrickable, with image and units; computed on demand with the Rebrickable key and kept on the device). RRP: message explains Brickset only has US/UK/CA/DE prices, and Ajustes can fill empty RRPs in bulk.

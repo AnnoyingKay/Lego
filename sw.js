@@ -1,4 +1,4 @@
-const CACHE='bricks-v1.18.1';
+const CACHE='bricks-v1.18.2';
 const CORE=['./','index.html','style.css','app.js','themes.js','themeicons.js','moc.js','colors.js','firebase-config.js','manifest.webmanifest','icon-192.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('bricks-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
